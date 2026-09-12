@@ -421,6 +421,19 @@ export function buildValve(spec, o) {
   return parts;
 }
 
+/** An ion pump hanging under the pipe: a short pipe section, a port down, the pump body (sizes are guesses). */
+export function buildPump(spec, o) {
+  const a = Math.max(...spec.bore);
+  const hz = spec.size[2];
+  const r = spec.size[0], h = 0.12;
+  const parts = [{ slot: "pipe", mesh: lathe([[a, -hz], [a + 0.006, -hz], [a + 0.006, hz], [a, hz]], o.segs) }];
+  parts.push({ slot: "cavity", mesh: port(Math.min(0.03, a + 0.01), a + 0.04, [0, -(a + 0.006), 0], "-y", o) });
+  const top = -(a + 0.045);
+  parts.push({ slot: "yoke", mesh: port(r, h, [0, top, 0], "-y", o) });
+  if (o.lod === 0) parts.push({ slot: "yoke", mesh: box(r * 0.9, 0.006, r * 0.9, [0, top - h - 0.006, 0]) });
+  return parts;
+}
+
 export function buildGenericDiagnostic(spec, o) {
   const a = Math.max(...spec.bore);
   const hz = spec.size[2];

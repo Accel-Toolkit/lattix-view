@@ -19,7 +19,7 @@ from lattix.ir.walk import energy_gain_eV
 from lattix.ui.inspect import derived_numbers
 
 from lattix_view._version import __version__
-from lattix_view.families import FAMILIES, family_of
+from lattix_view.families import FAMILIES, family_from_words, family_of
 from lattix_view.sizing import BORE_SOURCES, C_LIGHT, outer_size, resolve_bores
 
 SCHEMA = "lattix-view.scene/1"
@@ -133,6 +133,19 @@ def _params(e: Element, p: Placed, lat: Lattice, d: dict) -> dict:
     if p.ref_in is not None:
         out["beta"] = float(p.ref_in.beta)
     return out
+
+
+def _family(e: Element) -> str:
+    """The archetype family of an instrument, or of a marker that names a device (a survey marker read
+    from a deck's own comments: its type words and its name), else ""."""
+    stem = (e.name or "").split("_")[0]
+    words = [stem, stem.rstrip("0123456789")] + list((e.meta or {}).get("tags") or [])   # the name, then the type words
+    if e.kind == "Instrument":
+        fam = family_of(e.family)
+        return fam if fam != "generic" else (family_from_words(words) or fam)
+    if e.kind == "Marker":
+        return family_from_words(words) if (e.meta or {}).get("comment") else ""
+    return ""
 
 
 def _label(e: Element, d: dict, prm: dict) -> str:
@@ -323,13 +336,14 @@ def scene_view(lat: Lattice, placed: list[Placed], *, fmt: str = "", path: str |
         d = derived_numbers(p, lat)
         prm = _params(e, p, lat, d)
         sub = _sub_kind(e, f)
-        fam = family_of(e.family) if e.kind == "Instrument" else ""
+        fam = _family(e)
         hx_b, hy_b, shape, src = bores[k]
         clear_in = max(0.0, f.s_in - exits_before[k])
         clear_out = max(0.0, entries_after[k] - f.s_out)
         f_rf = prm.get("f") if isinstance(prm.get("f"), float) else None
         lam = C_LIGHT / f_rf if f_rf else (C_LIGHT / ref.rf_frequency_Hz if ref.rf_frequency_Hz else None)
-        size = outer_size(e.kind, sub, fam, float(e.length), (hx_b, hy_b), prm, lam, (clear_in, clear_out))
+        size_kind = "Instrument" if e.kind == "Marker" and fam else e.kind      # a marker that names a device
+        size = outer_size(size_kind, sub, fam, float(e.length), (hx_b, hy_b), prm, lam, (clear_in, clear_out))
         flags = (F_REVERSED if f.reversed else 0) | (F_SHIFTED if f.shifted else 0) | (F_THIN if e.length <= 0 else 0) \
             | (F_CHILD if f.parent is not None else 0) | (F_SKEW if f.roll else 0) \
             | (F_ELECTRIC if getattr(e, "electric", False) else 0)

@@ -28,22 +28,27 @@ export function archetypeFor(spec) {
     case "Kicker": return ["corrector"];
     case "Collimator": return ["collimator"];
     case "Foil": return ["foil"];
-    case "Marker": return ["ring"];
+    case "Marker": return fam ? instrumentArchetype(fam) : ["ring"];
     case "Taylor": return spec.L > 0 ? ["abstract"] : ["ring"];
     case "Patch": return ["triad"];
     case "ReferenceChange": case "Freq": return ["flag"];
     case "Directive": return null;
-    case "Instrument":
-      if (["bpm", "bpm_h", "bpm_v", "phase"].includes(fam)) return ["bpm"];
-      if (["profile", "wire", "screen", "laser", "emittance", "cup"].includes(fam)) return ["profile"];
-      if (["current", "current_gap"].includes(fam)) return ["current"];
-      if (fam === "loss") return ["sidedetector"];
-      if (fam === "valve") return ["valve"];
-      if (["corrector_h", "corrector_v", "chopper"].includes(fam)) return ["corrector"];
-      if (["collimator", "absorber"].includes(fam)) return ["collimator"];
-      return ["generic"];
+    case "Instrument": return instrumentArchetype(fam);
     default: return ["abstract"];
   }
+}
+
+/** The archetype of an instrument family (also of a marker that names a device). */
+export function instrumentArchetype(fam) {
+  if (["bpm", "bpm_h", "bpm_v", "phase"].includes(fam)) return ["bpm"];
+  if (["profile", "wire", "screen", "laser", "emittance", "cup"].includes(fam)) return ["profile"];
+  if (["current", "current_gap"].includes(fam)) return ["current"];
+  if (fam === "loss") return ["sidedetector"];
+  if (fam === "valve") return ["valve"];
+  if (fam === "pump") return ["pump"];
+  if (["corrector_h", "corrector_v", "corrector", "chopper"].includes(fam)) return ["corrector"];
+  if (["collimator", "absorber"].includes(fam)) return ["collimator"];
+  return ["generic"];
 }
 
 const BUILDERS = {
@@ -62,6 +67,7 @@ const BUILDERS = {
   current: (s, o) => B.buildCurrentMonitor(s, o),
   sidedetector: (s, o) => B.buildSideDetector(s, o),
   valve: (s, o) => B.buildValve(s, o),
+  pump: (s, o) => B.buildPump(s, o),
   generic: (s, o) => B.buildGenericDiagnostic(s, o),
   abstract: (s, o) => B.buildAbstractBox(s, o),
   ring: (s, o) => B.buildMarkerRing(s, o),

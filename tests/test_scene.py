@@ -11,7 +11,7 @@ import pytest
 from lattix.ir.elements import ELEMENT_KINDS
 from lattix.ui.model import jsonable
 
-from lattix_view.families import FAMILIES, family_of
+from lattix_view.families import FAMILIES, family_from_words, family_of
 from lattix_view.scene import F_CHILD, F_HIDDEN, F_SHIFTED, F_SKEW, F_THIN, KINDS, SCHEMA, scene_view
 from lattix_view.sizing import outer_size, resolve_bores, thin_length
 from tests.conftest import load
@@ -184,3 +184,37 @@ def test_sizing_and_families_helpers():
     assert outer_size("Instrument", "", "bpm", 0.0, (0.02, 0.02), {}, None, (0.5, 0.5)) == (0.04, 0.04, 0.04)
     assert family_of("DIAG_SIZE") == "profile" and family_of("hmon") == "bpm_h" and family_of("whatever") == "generic"
     assert family_of(None) == "generic" and family_of("BPM") == "bpm"
+
+
+def test_markers_named_by_comments_become_devices(tmp_path):
+    """A TraceWin deck whose zero-length drifts carry ``; s NAME TYPE`` comments (a deck converted from a
+    MAD flat file): the markers keep their names, take a family from the words, and get device sizes."""
+    from lattix.formats import read
+    from lattix.ir.walk import propagate
+
+    deck = tmp_path / "line.dat"
+    deck.write_text(
+        "DRIFT 300 25.4\n"
+        "DRIFT 0.000 25.400 ; 0.300 HKV MONITOR\n"
+        "DRIFT 200 25.4 ; drift to the buncher\n"
+        "DRIFT 0.000 25.400 ; 0.500 IONPUMP MONITOR\n"
+        "DRIFT 0 25.4\n"
+        "QF1:QUAD 200 5.0 25.4 ; 0.600 QF1 QUADRUPOLE K1=0.5\n"
+        "MARKER ; 0.700 DCH01 HKICKER\n"
+        "DRIFT 0.000 25.400 ; BLM3\n"
+        "END\n", encoding="utf-8")
+    lat, rep = read(deck, kinetic_energy_eV=2.1e6)
+    placed = propagate(lat)
+    payload = scene_view(lat, placed, fmt="tracewin", path=str(deck))
+    el = payload["el"]
+    kinds = [KINDS[k] for k in el["kind"]]
+    fams = [payload["families"][f] for f in el["fam"]]
+    assert kinds == ["Drift", "Marker", "Drift", "Marker", "Drift", "Quadrupole", "Marker", "Marker"]
+    assert el["name"] == ["DRIFT_0001", "HKV", "DRIFT_0002", "IONPUMP", "DRIFT_0003", "QF1", "DCH01", "BLM3"]
+    assert fams == ["", "bpm", "", "pump", "", "", "corrector_h", "loss"]
+    # a device marker is sized like the instrument it names, a bare zero-length drift stays thin
+    assert el["size"][3 * 1 + 2] >= 0.02 and el["size"][3 * 3 + 1] > 0.15 and el["size"][3 * 4 + 2] <= 0.01
+    assert el["L"][1] == 0 and (el["flags"][1] & F_THIN)
+    assert family_from_words(["4.898", "HKV", "MONITOR"]) == "bpm"
+    assert family_from_words(["IONPUMP", "MONITOR"]) == "pump" and family_from_words(["K1=0.5"]) == ""
+    assert family_from_words(["nothing", "known"]) == ""

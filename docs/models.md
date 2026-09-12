@@ -56,12 +56,24 @@ a borrowed bore says so. A quadrupole given TraceWin's `gfr` and no aperture tak
 | current (families current, current_gap) | `2.9 a + 0.04`, `hz` = `L/2` or 30 mm | a toroid of major radius `2.5 a + 0.02` in a translucent housing; a ceramic gap ring for `current_gap` | |
 | sidedetector (family loss) | fixed `0.29, 0.04, 0.075` | a chamber beside the pipe on a bracket, 250 mm to the left | a loss monitor's position is a guess |
 | valve (family valve) | `2 a + 0.03, 2 a + 0.06, 0.03` | a gate slab above the pipe, an actuator, a short pipe section | |
+| pump (family pump) | `max(2 a, 0.06), a + 0.18, hz` | a short pipe section, a port down, the pump body hanging under the pipe with its base plate | the 120 mm body is a guess |
 | generic (any other instrument) | `a + 0.02, a + 0.08, hz` | a pipe section, a port and a box | |
 | abstract (Taylor with `L > 0`, Superposition envelopes, a cavity without a clock) | the server's half-extents | a translucent box | |
-| ring (Marker, thin Taylor) | `a + 0.01`, 1 mm | a thin torus around the pipe | |
+| ring (Marker, thin Taylor) | `a + 0.01`, 1 mm | a thin torus around the pipe | a marker that names a device is drawn as that device instead (below) |
 | triad (Patch) | `max(0.1, 3 a)` arms | the local axes and a knob at the origin | |
 | flag (ReferenceChange, Freq) | | a stem with a small flag | |
 | mapextent (FieldMap of another kind) | `r_max` from the map, else the server's size | a translucent cylinder over the map's extent | |
+
+**Markers that name a device.** A deck often points at hardware without modelling it: a TraceWin
+deck converted from a MAD flat file carries `DRIFT 0.000 25.400 ; 4.898 HKV MONITOR`, which lattix
+reads as a `Marker` named `HKV` with the type words as tags. The viewer looks the marker's name
+(its stem, digits stripped) and then its tags up in a vocabulary of the usual device words (BPM,
+MONITOR, HMONITOR, BLM, WS, SCREEN, OTR, YAG, FC, ACCT, DCCT, TOROID, PUMP, IONPUMP, VALVE, GV,
+KICKER, HKICKER, VKICKER, CORR, HCOR, VCOR, XCOR, YCOR, DCH, DCV, STEERER, CHOPPER, COLLIMATOR,
+SCRAPER, ABSORBER, DUMP, ...) and draws the first match with that family's instrument archetype,
+sized as the instrument would be; a marker whose words say nothing stays a ring. An instrument
+whose family lattix could not place is looked up the same way before it falls back to the generic
+model.
 
 Elements that are not drawn: `Directive`, a `Taylor` that stands in for RF focusing
 (`meta.rf_focusing_of`), and a `Superposition` itself (its children are drawn). Hidden elements

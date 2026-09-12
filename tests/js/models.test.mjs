@@ -18,7 +18,7 @@ const SUBS = { Bend: ["sector", "rect"], RFCavity: ["gap", "sw", "tw"], FieldMap
                Kicker: ["h", "v", "hv", "electric_h"], Collimator: ["rect", "ellipse", "unknown"], Multipole: ["n1", "n3"],
                NCells: ["mode0"], Quadrupole: ["", "skew"], Taylor: ["", "rf_focusing"] };
 const FAMS = ["bpm", "bpm_h", "bpm_v", "phase", "profile", "wire", "screen", "laser", "emittance", "cup", "current", "current_gap",
-              "loss", "valve", "chopper", "corrector_h", "corrector_v", "collimator", "absorber", "generic"];
+              "loss", "valve", "chopper", "corrector_h", "corrector_v", "corrector", "collimator", "absorber", "pump", "generic"];
 const BUDGET = 9000;         // triangles per element at full detail (24 segments)
 
 function spec(kind, sub = "", fam = "", { L = 0.3, a = 0.03, angle = 0, tilt = 0, lam = 0.85, beta = 0.6, thin = false } = {}) {
@@ -136,4 +136,15 @@ test("primitives are well formed", () => {
   assert.equal(cyl.indices.length / 3, 4 * 8 * 2);
   const t = torus(1, 0.1, 12, 6);
   assert.ok(t.indices.length / 3 === 12 * 6 * 2);
+});
+
+test("a marker that names a device is drawn as that device, a bare marker as a ring", () => {
+  assert.deepEqual(archetypeFor(spec("Marker")), ["ring"]);
+  assert.deepEqual(archetypeFor(spec("Marker", "", "bpm")), ["bpm"]);
+  assert.deepEqual(archetypeFor(spec("Marker", "", "pump")), ["pump"]);
+  assert.deepEqual(archetypeFor(spec("Marker", "", "corrector")), ["corrector"]);
+  const pump = buildMerged({ ...spec("Marker", "", "pump", { thin: true }), size: [0.06, 0.21, 0.02] }, optionsFor(10));
+  assert.ok(pump.triangles > 50 && pump.bounds.min[1] < -0.15 && pump.bounds.max[1] < 0.05, "the pump hangs under the pipe");
+  const corr = buildMerged({ ...spec("Marker", "", "corrector", { thin: true }), size: [0.09, 0.09, 0.05] }, optionsFor(10));
+  assert.ok(corr.triangles > 100);
 });

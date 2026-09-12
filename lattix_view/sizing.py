@@ -133,7 +133,7 @@ def outer_size(kind: str, sub: str, fam: str, L: float, bore: tuple[float, float
     if kind == "RFQCell":
         w = 0.20 * lam if lam else max(6.0 * a, 0.10)
         return w, w, hz
-    if kind == "Kicker" or fam in ("corrector_h", "corrector_v", "chopper"):
+    if kind == "Kicker" or fam in ("corrector_h", "corrector_v", "corrector", "chopper"):
         w = max(3.0 * a, 0.08)
         return w, w, hz
     if kind == "Collimator" or fam in ("collimator", "absorber"):
@@ -158,6 +158,8 @@ def outer_size(kind: str, sub: str, fam: str, L: float, bore: tuple[float, float
             return 0.29, 0.04, 0.075
         if fam == "valve":
             return 2.0 * a + 0.03, 2.0 * a + 0.06, 0.03
+        if fam == "pump":
+            return max(2.0 * a, 0.06), a + 0.18, max(hz, 0.03)
         return a + 0.02, a + 0.08, max(hz, 0.03)
     if kind == "Taylor":
         w = 2.0 * a
