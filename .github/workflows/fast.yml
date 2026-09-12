@@ -30,4 +30,6 @@ jobs:
       - run: pytest -q
         env:
           LATTIX_PUBLIC_DECKS: ${{ github.workspace }}/lattix-src/tests/data/public
-      - run: lattix ui --root lattix-src/tests/data/public --check --no-browser | grep "plugins: lattix_view"
+      - name: the workbench loads the plugin
+        run: |
+          lattix ui --root lattix-src/tests/data/public --check --no-browser | grep "plugins: lattix_view"

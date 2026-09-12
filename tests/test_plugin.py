@@ -59,6 +59,15 @@ def test_listed_page_and_static_files(server):
     assert api(server, "GET", "/plugins/lattix_view/static/app/main.js", headers={"If-None-Match": etag})[0] == 304
     status, three, resp = api(server, "GET", "/plugins/lattix_view/static/vendor/three/three.module.js")
     assert status == 200 and len(three) > 10_000 and resp.getheader("Content-Type").startswith("text/javascript")
+    # scripts are fetched by the browser without the token header: the static route is public, the API is not
+    conn = http.client.HTTPConnection("127.0.0.1", server["port"], timeout=60)
+    conn.request("GET", "/plugins/lattix_view/static/app/main.js")
+    assert conn.getresponse().status == 200
+    conn.close()
+    conn = http.client.HTTPConnection("127.0.0.1", server["port"], timeout=60)
+    conn.request("GET", "/plugins/lattix_view/api/info")
+    assert conn.getresponse().status == 403
+    conn.close()
     for bad in ("static/../../pyproject.toml", "static/app/../../__init__.py", "static/%2e%2e/scene.py",
                 "static//app/main.js", "static/app/nothing.js"):
         assert api(server, "GET", f"/plugins/lattix_view/{bad}")[0] == 404, bad

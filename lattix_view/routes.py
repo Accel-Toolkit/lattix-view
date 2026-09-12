@@ -111,10 +111,11 @@ def r_info(handler, query) -> None:
                         "schema": "lattix-view.scene/1"})
 
 
+#: the static files are public (a browser fetches scripts without headers); everything else needs the token
 ROUTES = [
     ("GET", r"/", r_page),
     ("GET", r"/index\.html", r_page),
-    ("GET", r"/static/(.+)", r_static),
+    ("GET", r"/static/(.+)", r_static, True),
     ("GET", r"/api/scene", r_scene),
     ("GET", r"/api/info", r_info),
 ]
