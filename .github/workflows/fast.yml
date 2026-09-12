@@ -33,3 +33,26 @@ jobs:
       - name: the workbench loads the plugin
         run: |
           lattix ui --root lattix-src/tests/data/public --check --no-browser | grep "plugins: lattix_view"
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Accel-Toolkit/lattix
+          path: lattix-src
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e "./lattix-src" "pals-schema>=0.3.0" && pip install -e ".[dev,browser]"
+      - run: playwright install --with-deps chromium
+      - name: three decks in headless Chromium (SwiftShader), the tools, the exports, the overrides, the budgets
+        run: pytest tests/e2e -q -m "browser and not slow"
+        env:
+          LATTIX_PUBLIC_DECKS: ${{ github.workspace }}/lattix-src/tests/data/public
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-artifacts
+          path: tests/e2e/.artifacts/
+          if-no-files-found: ignore

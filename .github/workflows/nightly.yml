@@ -1,0 +1,40 @@
+name: nightly
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      update_goldens:
+        description: "rewrite the screenshot goldens from this run"
+        type: boolean
+        default: false
+jobs:
+  browser-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Accel-Toolkit/lattix
+          path: lattix-src
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install -e "./lattix-src" "pals-schema>=0.3.0" cpymad && pip install -e ".[dev,browser]"
+      - run: playwright install --with-deps chromium
+      - name: every public deck, the video exports, the budgets, the screenshot goldens
+        run: pytest tests/e2e -q -m browser
+        env:
+          LATTIX_PUBLIC_DECKS: ${{ github.workspace }}/lattix-src/tests/data/public
+          LATTIX_VIEW_E2E_ALL: "1"
+          LATTIX_VIEW_UPDATE_GOLDENS: ${{ inputs.update_goldens && '1' || '0' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-artifacts
+          path: |
+            tests/e2e/.artifacts/
+            tests/e2e/screens/
+          if-no-files-found: ignore

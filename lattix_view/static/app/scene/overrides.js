@@ -14,7 +14,8 @@ export class OverrideModels {
     this.group.name = "overrides";
     this.loader = new GLTFLoader();
     this.report = [];                 // [{i, name, rule, status, detail}]
-    this.objects = [];                // placed objects (for picking)
+    this.objects = [];                // placed holders, one per element
+    this.meshes = [];                 // their meshes, for picking (userData.i names the element)
   }
 
   async load() {
@@ -55,6 +56,7 @@ export class OverrideModels {
         model.traverse(o => {
           if (!o.isMesh) return;
           o.userData.i = i;
+          this.meshes.push(o);
           if (entry.materials === "kind") {
             const [r, g, b] = slotColour("yoke", kindHex);
             o.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(r, g, b), roughness: 0.6, metalness: 0.25 });

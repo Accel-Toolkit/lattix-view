@@ -12,26 +12,53 @@ import { MeasuresPanel } from "./ui/panel_measures.js";
 import { ExportPanel } from "./ui/panel_export.js";
 
 const $ = sel => document.querySelector(sel);
+const params = new URLSearchParams(location.search);
 
 const state = {
   session, theme: systemTheme(), palette: paletteFor(systemTheme()), scene: null, selection: null, hover: -1,
-  bridge: null, style: "realistic", xray: false, payload: null,
+  bridge: null, style: "realistic", xray: false, payload: null, frameInfo: null, contextLost: false,
+  lodBias: parseFloat(params.get("lod") || "") || 1,
 };
+
+// the last warnings and errors, for the diagnostics
+const logLines = [];
+for (const level of ["warn", "error"]) {
+  const orig = console[level].bind(console);
+  console[level] = (...args) => {
+    logLines.push(`${level}: ${args.map(a => (a && a.stack) || String(a)).join(" ")}`.slice(0, 400));
+    if (logLines.length > 40) logLines.shift();
+    orig(...args);
+  };
+}
+window.addEventListener("error", ev => { logLines.push(`uncaught: ${ev.message}`.slice(0, 400)); });
 
 // -- renderer -------------------------------------------------------------------------------------
 const view = $("#view");
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+  if (!renderer.getContext()) throw new Error("the browser gave no WebGL context");
 } catch (e) {
-  showMessage(`<p class="err">WebGL is not available in this browser.</p><p>${e.message}</p>`);
+  noWebGL(e);
   throw e;
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.autoClear = true;
+renderer.info.autoReset = false;
 view.appendChild(renderer.domElement);
+renderer.domElement.addEventListener("webglcontextlost", ev => {
+  ev.preventDefault();
+  state.contextLost = true;
+  showMessage(`<p class="err">The graphics context was lost.</p><p class="muted">waiting for the browser to restore it…</p>`);
+});
+renderer.domElement.addEventListener("webglcontextrestored", () => {
+  state.contextLost = false;
+  hideMessage();
+  if (state.scene) state.scene.recolour(state.palette);
+});
 const scene3 = new THREE.Scene();
 const rig = new CameraRig(renderer, renderer.domElement);
+if (params.get("static") === "1") rig.reducedMotion = true;          // tests and screenshots: no easing
 const camera = rig.camera;
 const hemi = new THREE.HemisphereLight(0xffffff, 0x334455, 1.2);
 const sun = new THREE.DirectionalLight(0xffffff, 1.4);
@@ -56,8 +83,19 @@ const exportPanel = new ExportPanel($("#exports"), {
 });
 state.site = null;
 let frames = 0;
-window.lattix3d = { state, scene3, camera, rig, measure, ready: false,
-  stats() { return { elements: state.scene ? state.scene.n : 0, frames, ...(state.scene ? state.scene.stats : {}) }; },
+window.lattix3d = { state, scene3, camera, rig, measure, logs: logLines, ready: false,
+  stats() {
+    return { elements: state.scene ? state.scene.n : 0, frames, frame: state.frameInfo, lazy: state.scene ? state.scene.lazy : false,
+             distances: state.scene ? state.scene.distances : null, ...(state.scene ? state.scene.stats : {}) };
+  },
+  diagnostics() { return diagnostics(); },
+  /** Mean milliseconds of a pick over n cursor positions spread across the canvas. */
+  pickMs(n = 50) {
+    const r = renderer.domElement.getBoundingClientRect();
+    const t0 = performance.now();
+    for (let k = 0; k < n; k++) pick({ clientX: r.left + r.width * ((k * 0.618034) % 1), clientY: r.top + r.height * ((k * 0.381966) % 1) });
+    return (performance.now() - t0) / n;
+  },
   select(i) { select(i, true); }, view(name) { views(name); },
   /** Canvas pixel of a global point, or of element i's centre ("c"), entrance ("in") or exit ("out"). */
   screenPosOf(i, at = "c") {
@@ -88,7 +126,10 @@ let lastLabels = 0;
 function loop() {
   requestAnimationFrame(loop);
   rig.update();
+  if (state.scene) state.scene.updateLOD(camera.position, frames);
+  renderer.info.reset();
   renderer.render(scene3, camera);
+  state.frameInfo = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
   gizmo.render(renderer, camera, renderer.domElement.width / renderer.getPixelRatio(), renderer.domElement.height / renderer.getPixelRatio());
   labels.render(camera);
   frames++;
@@ -242,10 +283,46 @@ function step(delta, skipDrifts) {
 function showMessage(html) { const m = $("#msg"); m.innerHTML = `<div>${html}</div>`; m.hidden = false; }
 function hideMessage() { $("#msg").hidden = true; }
 
+/** The page without WebGL: say so, and keep the survey table reachable (it never needed the GPU). */
+function noWebGL(e) {
+  const sid = session ? encodeURIComponent(session) : "";
+  const survey = fmt => withToken(`/api/session/${sid}/survey?at=all&children=1&format=${fmt}`);
+  const links = sid ? `<p>The survey table does not need it: <a href="${survey("csv")}" download>CSV</a> · <a href="${survey("json")}">JSON</a></p>` : "";
+  showMessage(`<p class="err">WebGL is not available in this browser.</p><p class="muted">${e.message}</p>${links}` +
+              `<p class="muted">Try another browser, or turn hardware acceleration on.</p>`);
+  document.documentElement.setAttribute("data-webgl", "none");
+}
+
+function diagnostics() {
+  const gl = renderer.getContext();
+  const dbg = gl && gl.getExtension("WEBGL_debug_renderer_info");
+  const gpu = dbg ? `${gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)} / ${gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)}` : "unknown";
+  const L = state.payload ? state.payload.lattice : null, V = (state.payload && state.payload.versions) || {};
+  const s = state.scene ? state.scene.stats : {};
+  const fmtD = d => Number.isFinite(d) ? `${d} m` : "never";
+  const vec = v => v.toArray().map(x => x.toFixed(3)).join(", ");
+  return [
+    `lattix-view ${V.lattix_view || "?"}  lattix ${V.lattix || "?"}  three r${THREE.REVISION}`,
+    `deck: ${L ? `${L.file || L.name}  ${L.format}  ${L.n} elements  ${L.total_length} m` : "none"}`,
+    `gpu: ${gpu}`,
+    `webgl: ${renderer.capabilities.isWebGL2 ? "2" : "1"}  max texture ${renderer.capabilities.maxTextureSize}  dpr ${renderer.getPixelRatio()}  canvas ${renderer.domElement.width}×${renderer.domElement.height}`,
+    `scene: build ${(s.buildMs || 0).toFixed(0)} ms  ${s.triangles || 0} triangles  ${s.chunks || 0} chunks  levels ${JSON.stringify(s.levels || [])}` +
+      (state.scene ? `  schematic at ${fmtD(state.scene.distances[0])}, boxes at ${fmtD(state.scene.distances[1])}${state.scene.lazy ? "  lazy" : ""}` : ""),
+    `frame: ${state.frameInfo ? `${state.frameInfo.calls} draw calls  ${state.frameInfo.triangles} triangles` : "none"}  frames ${frames}  ` +
+      `memory ${renderer.info.memory.geometries} geometries ${renderer.info.memory.textures} textures  context ${state.contextLost ? "lost" : "live"}`,
+    `camera: ${rig.mode}  position ${vec(camera.position)}  target ${vec(rig.controls.target)}  fov ${camera.fov}`,
+    `browser: ${navigator.userAgent}`,
+    `page: ${location.origin}${location.pathname}  embedded ${embedded}  session ${state.session || "none"}`,
+    ...(logLines.length ? ["log:", ...logLines.map(l => "  " + l)] : ["log: clean"]),
+  ].join("\n");
+}
+
 function rebuild() {
   if (!state.payload) return;
-  if (state.scene) scene3.remove(state.scene.group);
-  state.scene = new LatticeScene(state.payload, state.palette, state.theme, { style: state.style });
+  if (state.scene) { scene3.remove(state.scene.group); state.scene.dispose(); }
+  state.scene = new LatticeScene(state.payload, state.palette, state.theme, { lazy: params.get("lazy") === "1", lodBias: state.lodBias });
+  state.scene.setForcedLevel(state.style === "schematic" ? 1 : null);
+  state.scene.updateLOD(camera.position, frames);
   state.scene.orbit.visible = $("#btn-orbit").getAttribute("aria-pressed") === "true";
   applyXray();
   scene3.add(state.scene.group);
@@ -353,7 +430,7 @@ $("#btn-style").addEventListener("click", ev => {
   state.style = state.style === "realistic" ? "schematic" : "realistic";
   ev.currentTarget.textContent = state.style === "realistic" ? "schematic" : "realistic";
   ev.currentTarget.setAttribute("aria-pressed", String(state.style === "schematic"));
-  rebuild();
+  if (state.scene) state.scene.setForcedLevel(state.style === "schematic" ? 1 : null);
 });
 $("#btn-xray").addEventListener("click", () => { state.xray = !state.xray; applyXray(); });
 $("#btn-labels").addEventListener("click", ev => { const mode = labels.cycle(); ev.currentTarget.textContent = `labels: ${mode}`; labels.setSelected(state.scene, state.selection); labels.setAll(state.scene, camera, rig.controls.target); });
@@ -368,6 +445,13 @@ $("#btn-grid").addEventListener("click", ev => {
   overlays.setGrid(on);
 });
 $("#btn-help").addEventListener("click", () => { $("#help").hidden = !$("#help").hidden; });
+$("#btn-diag").addEventListener("click", () => {
+  const text = diagnostics();
+  const pre = $("#diag");
+  pre.textContent = text;
+  pre.hidden = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(() => {});
+});
 $("#btn-measure").addEventListener("click", () => measure.setTool("distance"));
 $("#btn-angle").addEventListener("click", () => measure.setTool("angle"));
 $("#btn-gap").addEventListener("click", () => measure.setTool("gap"));

@@ -38,3 +38,15 @@ All notable changes to lattix-view are recorded here. The format follows
   element with a site's own `.glb`, re-parameterise an archetype, or hide an element; fit by
   length, bore or box, anchor, rotation, offset and material policy; models served only by
   handle; `lattix-view overrides` reports what applies to a deck.
+- Levels of detail: the scene is cut into chunks of consecutive elements, each drawn at full
+  detail, as schematic parts or as one box per element by its distance to the camera; small scenes
+  stay at full detail everywhere, the largest build their full detail on demand and keep a bounded
+  number of chunks. The schematic style switches levels without a rebuild.
+- Robustness: a lost graphics context is announced and the scene returns when the browser
+  restores it; a browser without WebGL gets a page that still links the survey table; a
+  `copy diagnostics` button in the help panel gathers versions, GPU, scene and frame statistics
+  and the last warnings.
+- Browser tests (`tests/e2e`, Playwright on headless Chromium with SwiftShader): every push
+  renders three decks, hovers, measures, exports, applies an override, loses and restores the
+  context, and holds the draw-call, triangle, build-time and pick-time budgets on the FRIB deck;
+  the nightly run takes every public deck, the video exports and the screenshot goldens.
