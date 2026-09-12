@@ -13,9 +13,11 @@ from lattix.ui.model import jsonable
 from lattix.ui.server import ApiError
 
 from lattix_view._version import __version__
-from lattix_view.scene import scene_view
+from lattix_view.overrides import ModelRegistry, assignments, discover, load_all
+from lattix_view.scene import KINDS, scene_view
 
 PREFIX = "/plugins/lattix_view"
+MODELS = ModelRegistry()              # the model files a rule named, served by handle only
 
 #: the page's own policy: real script files, no inline script; blobs for exports and previews;
 #: only the workbench may frame it
@@ -109,6 +111,7 @@ def r_scene(handler, query) -> None:
             payload = scene_view(loaded.lattice, loaded.placed, fmt=loaded.fmt, path=loaded.path, side=side,
                                  shift=shift, children=children, start=site_frame(*pose))
             payload["lattice"]["site"] = dict(zip(SITE_KEYS, pose, strict=True))
+            payload["overrides"] = overrides_for(payload, loaded.path)
             body = json.dumps(jsonable(payload), allow_nan=False, separators=(",", ":")).encode("utf-8")
             state["scene"] = (key, body, gzip.compress(body, 6))
         _, body, packed = state["scene"]
@@ -117,6 +120,36 @@ def r_scene(handler, query) -> None:
                       {"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
     else:
         handler._send(200, body, "application/json; charset=utf-8")
+
+
+def overrides_for(payload: dict, path: str | None, extra: list[Path] | None = None) -> dict:
+    """The override block of a payload: the rule files that apply to this deck, resolved per element."""
+    errors: list[str] = []
+    files = discover(Path(path) if path else None, extra)
+    rules = load_all(files, errors)
+    if not rules:
+        return {"files": [str(f) for f in files], "errors": errors, "models": {}, "assign": {}}
+    el = payload["el"]
+    elements = []
+    for k in range(payload["lattice"]["n"]):
+        prm = el["params"][k] or {}
+        elements.append({"name": el["name"][k], "def": el["def"][k], "kind": KINDS[el["kind"][k]],
+                         "sub": payload["subkinds"][el["sub"][k]],
+                         "family": prm.get("family") or payload["families"][el["fam"][k]],
+                         "format": payload["lattice"]["format"], "original_type": prm.get("original_type")})
+    block = assignments(rules, elements, MODELS, PREFIX, errors)
+    block["files"] = [str(f) for f in files]
+    block["errors"] = errors
+    return block
+
+
+def r_models(handler, query, handle: str) -> None:
+    """A model file a rule named, by its handle; nothing else on the disk is reachable here."""
+    p = MODELS.get(handle)
+    if p is None or not p.is_file():
+        raise ApiError(404, "not_found", "no such model")
+    ctype = "model/gltf-binary" if p.suffix.lower() == ".glb" else "model/gltf+json"
+    handler._send(200, p.read_bytes(), ctype, cache="private, max-age=60")
 
 
 def r_info(handler, query) -> None:
@@ -132,5 +165,6 @@ ROUTES = [
     ("GET", r"/index\.html", r_page),
     ("GET", r"/static/(.+)", r_static, True),
     ("GET", r"/api/scene", r_scene),
+    ("GET", r"/models/([0-9a-f]{16})", r_models),
     ("GET", r"/api/info", r_info),
 ]

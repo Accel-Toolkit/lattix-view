@@ -1,0 +1,40 @@
+# lattix-view overrides: replace a procedural model with a site's own glTF, or re-parameterise an archetype.
+#
+# Where this file is found (earliest first, later files win among equal matches):
+#   $XDG_CONFIG_HOME/lattix-view/overrides.yaml, the paths in LATTIX_VIEW_OVERRIDES, <deck>.view.yaml beside
+#   the deck, and --overrides on the lattix-view command line.
+#
+# Model frame: the element's centre frame unless `anchor` says otherwise; +z along the beam, +y up, +x to the
+# left looking downstream (the lattix survey frame); `units` scales the file first.  `fit: length` scales the
+# model uniformly so its z extent equals the element length; `bore` so its declared bore equals the bore;
+# `box` fits all three half-extents; `none` keeps the file's size.  A root node `extras.lattix` of
+# {anchor, length_m, bore_m} in the file wins over the bounding-box measurement.
+version: 1
+models_dir: ./models
+defaults:
+  units: m
+  up: +y
+  forward: +z
+  anchor: centre
+  fit: none
+rules:
+  - match: {kind: Quadrupole}
+    model: quad_generic.glb
+    fit: length
+    materials: kind
+  - match: {kind: Instrument, family: bpm}
+    model: bpm_button.glb
+    anchor: entrance
+    offset: [0, 0, 0.05]
+  - match: {kind: Bend, sub: rect}
+    model: rbend.glb
+    anchor: chord
+  - match: {name: "QD*"}
+    model: qd_series.glb
+    scale: 0.001                      # a file authored in millimetres
+    rotate: [0, 0, 90]
+  - match: {name: "CAV_HWR_*"}
+    archetype: cavity
+    params: {n_cell: 2}
+  - match: {name: BPM01}
+    hide: true

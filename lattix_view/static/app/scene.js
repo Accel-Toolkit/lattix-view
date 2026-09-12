@@ -4,6 +4,7 @@
 import * as THREE from "../vendor/three/three.module.js";
 import { build, optionsFor } from "./models/index.js";
 import { makeMaterials, slotColour } from "./scene/materials.js";
+import { OverrideModels } from "./scene/overrides.js";
 
 export const HIDDEN = 64;
 
@@ -40,9 +41,13 @@ export class LatticeScene {
     const el = this.payload.el;
     const acc = {};                         // slot -> {pos: [], nrm: [], col: [], idx: [], ranges: [], vranges: {}}
     const p = new THREE.Vector3(), q = new THREE.Quaternion(), n = new THREE.Vector3();
+    const replaced = OverrideModels.replaced(this.payload);
+    const assign = (this.payload.overrides && this.payload.overrides.assign) || {};
     for (let i = 0; i < this.n; i++) {
-      if (el.flags[i] & HIDDEN) continue;
+      if ((el.flags[i] & HIDDEN) || replaced.has(i)) continue;
       const spec = this.specOf(i);
+      const re = assign[i];
+      if (re && re.archetype) { spec.archetype = re.archetype; spec.params = { ...spec.params, ...(re.params || {}) }; }
       let parts;
       try { parts = build(spec, this.opts); } catch (e) { console.warn("model failed", spec.kind, spec.sub, e); parts = []; }
       if (!parts.length) continue;
@@ -95,10 +100,20 @@ export class LatticeScene {
     this.group.add(this.orbit);
     this.stats.buildMs = performance.now() - t0;
     this.pickables = Object.values(this.meshes).filter(m => m.name !== "glass");
+    this.overrides = new OverrideModels(this, palette);
+    this.group.add(this.overrides.group);
+  }
+
+  /** Load the glTF overrides (asynchronous; the procedural scene is already on screen). */
+  async loadOverrides() {
+    await this.overrides.load();
+    for (const o of this.overrides.objects) this.pickables.push(o);
+    return this.overrides.report;
   }
 
   /** The element behind a raycast hit on one of the merged meshes (faceIndex -> element via the ranges). */
   elementAt(hit) {
+    if (hit.object.userData && hit.object.userData.i != null) return hit.object.userData.i;
     const ranges = this.ranges[hit.object.name];
     if (!ranges) return -1;
     const idx = hit.faceIndex * 3;

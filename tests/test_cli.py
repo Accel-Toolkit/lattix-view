@@ -38,3 +38,25 @@ def test_view_self_test(capsys):
     assert main(["view", str(deck), "--check", "--no-browser"]) == 0
     out = capsys.readouterr().out
     assert "plugins: lattix_view" in out and "/plugins/lattix_view/?token=" in out and "self-test passed" in out
+
+
+def test_overrides_command_lists_rules_and_assignments(tmp_path, capsys, monkeypatch):
+    from tests.test_overrides import cube_glb
+
+    monkeypatch.delenv("LATTIX_VIEW_OVERRIDES", raising=False)
+    monkeypatch.setenv("LATTIX_VIEW_CONFIG_DIR", str(tmp_path / "nowhere"))
+    deck = deck_path("helix/bend_line.dat")
+    (tmp_path / "models").mkdir()
+    cube_glb(tmp_path / "models" / "cube.glb")
+    rules = tmp_path / "rules.yaml"
+    rules.write_text("version: 1\nmodels_dir: models\nrules:\n  - match: {kind: Quadrupole}\n    model: cube.glb\n"
+                     "  - match: {kind: Bend}\n    hide: true\n", encoding="utf-8")
+    assert main(["overrides", str(deck), "--overrides", str(rules)]) == 0
+    out = capsys.readouterr().out
+    assert str(rules) in out and "rules: 2" in out and "kind=Quadrupole -> model cube.glb" in out
+    assert "assigned: 7" in out and out.count("cube.glb (fit none, anchor centre") == 5 and out.count(": hidden") == 2
+    rules.write_text("version: 1\nmodels_dir: models\nrules:\n  - match: {kind: Drift}\n    model: absent.glb\n")
+    assert main(["overrides", str(deck), "--overrides", str(rules)]) == 1
+    out = capsys.readouterr().out
+    assert out.count("error: ") == 1 and "not found" in out and "assigned: 0" in out
+    assert main(["overrides", str(deck), "--overrides", str(tmp_path / "missing.yaml")]) == 2

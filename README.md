@@ -6,13 +6,17 @@ per element, a hover label, measurement tools and exports. It runs in the browse
 lattix workbench (`lattix ui`) or on its own.
 
 **In development until 0.1.0.** What works today: the scene payload for any deck, the plugin tab
-in the workbench, a first scene of boxes on the survey frames.
+in the workbench, the procedural model library, the camera modes and views, hover labels and
+search, the measurement tools, the survey, glTF, OBJ, screenshot and video exports, and glTF
+overrides from a site's own files. Level of detail for the largest decks and the release
+machinery are what remain.
 
 ```bash
 pip install lattix-view          # once released; until then: pip install -e . in a checkout
 lattix-view view linac.dat        # the 3D page for one deck
 lattix ui --root decks/           # the workbench, with a 3D tab
 lattix-view scene linac.dat -o scene.json
+lattix-view overrides linac.dat --overrides site.yaml   # which of a site's models replace which elements
 ```
 
 The geometry is lattix's: the position and orientation of every element at its entrance, centre

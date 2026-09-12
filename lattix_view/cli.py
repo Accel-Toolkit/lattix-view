@@ -1,4 +1,5 @@
-"""``lattix-view``: open a deck in the 3D viewer, dump its scene payload, or check the installation."""
+"""``lattix-view``: open a deck in the 3D viewer, dump its scene payload, list the override rules that
+apply to it, or check the installation."""
 from __future__ import annotations
 
 import argparse
@@ -36,6 +37,15 @@ def cmd_view(a) -> int:
     options = {"format": a.format} if a.format else {}
     if a.read_option:
         options["options"] = _kv(a.read_option)
+    if a.overrides:
+        from lattix_view.overrides import CLI_FILES
+
+        for p in a.overrides:
+            path = Path(p).expanduser().resolve()
+            if not path.is_file():
+                print(f"lattix-view: no such overrides file: {p}", file=sys.stderr)
+                return 2
+            CLI_FILES.append(path)
     return serve(settings, check=a.check, deck=str(deck), deck_options=options,
                  plugins=[compile_plugin(register())])
 
@@ -59,6 +69,56 @@ def cmd_scene(a) -> int:
     else:
         print(text)
     return 0
+
+
+def cmd_overrides(a) -> int:
+    """Which override files apply to a deck, which rule each element gets, and what went wrong."""
+    from lattix.formats import read
+    from lattix.ir.walk import propagate
+
+    from lattix_view.overrides import discover, load_all
+    from lattix_view.routes import PREFIX, overrides_for
+    from lattix_view.scene import scene_view
+
+    extra = []
+    for p in a.overrides or []:
+        path = Path(p).expanduser().resolve()
+        if not path.is_file():
+            print(f"lattix-view: no such overrides file: {p}", file=sys.stderr)
+            return 2
+        extra.append(path)
+    deck = Path(a.deck).expanduser().resolve()
+    files = discover(deck, extra)
+    errors: list[str] = []
+    rules = load_all(files, errors)
+    print(f"files ({len(files)}):" + ("" if files else " none"))
+    for f in files:
+        print(f"  {f}")
+    print(f"rules: {len(rules)}")
+    for lr in rules:
+        r = lr.rule
+        action = f"model {r.model}" if r.model else f"archetype {r.archetype} {r.params}" if r.archetype else "hide"
+        crit = ", ".join(f"{k}={v}" for k, v in r.match.model_dump(by_alias=True).items() if v is not None)
+        print(f"  {lr.source.name}#{lr.order % 10_000}: {crit or 'everything'} -> {action}")
+    lat, rep = read(str(deck), a.format, **_kv(a.read_option))
+    placed = propagate(lat)
+    payload = scene_view(lat, placed, fmt=rep.source_format or a.format or "", path=str(deck))
+    block = overrides_for(payload, str(deck), extra)
+    el = payload["el"]
+    print(f"elements: {payload['lattice']['n']}, assigned: {len(block['assign'])}")
+    for k, entry in sorted(block["assign"].items(), key=lambda kv: int(kv[0])):
+        i = int(k)
+        if entry.get("hide"):
+            what = "hidden"
+        elif entry.get("archetype"):
+            what = f"archetype {entry['archetype']} {entry.get('params') or ''}".rstrip()
+        else:
+            m = block["models"][entry["model"]]
+            what = f"{m['file']} (fit {entry['fit']}, anchor {entry['anchor']}, {PREFIX}/models/{entry['model']})"
+        print(f"  {i:5d} {el['name'][i]:24s} {payload['kinds'][el['kind'][i]]:14s} {entry['rule']}: {what}")
+    for e in errors + [e for e in block["errors"] if e not in errors]:
+        print(f"error: {e}")
+    return 1 if errors or block["errors"] else 0
 
 
 def cmd_check(a) -> int:
@@ -103,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("deck")
     s.add_argument("--format", default=None, help="the deck's format (default: guessed)")
     s.add_argument("--read-option", action="append", help="KEY=VALUE for the reader (e.g. species=h-)")
+    s.add_argument("--overrides", action="append", help="a glTF overrides file (YAML); may repeat, later files win")
     s.add_argument("--root", default=None, help="the directory the workbench may open decks from (default: the deck's)")
     s.add_argument("--any-path", action="store_true")
     s.add_argument("--host", default="127.0.0.1")
@@ -121,6 +182,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--no-shift", action="store_true", help="ignore misalignments")
     s.add_argument("--no-children", action="store_true", help="keep superposition clusters whole")
     s.set_defaults(func=cmd_scene)
+
+    s = sub.add_parser("overrides", help="which glTF override rules apply to a deck, element by element")
+    s.add_argument("deck")
+    s.add_argument("--format", default=None)
+    s.add_argument("--read-option", action="append")
+    s.add_argument("--overrides", action="append", help="an overrides file to apply after the discovered ones")
+    s.set_defaults(func=cmd_overrides)
 
     s = sub.add_parser("check", help="verify the installation: lattix's plugin hook, the entry point, three.js")
     s.set_defaults(func=cmd_check)

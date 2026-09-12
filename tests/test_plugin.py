@@ -97,3 +97,34 @@ def test_scene_of_a_session_plain_gzip_and_errors(server):
     status, tsc, _ = api(server, "GET", f"/plugins/lattix_view/api/scene?session={sid}&translation={t['translation']}")
     assert status == 200 and tsc["lattice"]["side"] == "dst" and tsc["lattice"]["format"] == "elegant"
     assert server["app"].sessions.get(sid).plugin_state["lattix_view"]["scene"][1]
+
+
+def test_overrides_reach_the_scene_and_models_are_served_by_handle(server, tmp_path, monkeypatch):
+    from tests.test_overrides import cube_glb
+
+    (tmp_path / "models").mkdir()
+    cube_glb(tmp_path / "models" / "cube.glb")
+    (tmp_path / "rules.yaml").write_text(
+        "version: 1\nmodels_dir: models\nrules:\n"
+        "  - match: {kind: Quadrupole}\n    model: cube.glb\n    fit: length\n"
+        "  - match: {kind: Bend}\n    hide: true\n"
+        "  - match: {kind: Drift}\n    model: absent.glb\n", encoding="utf-8")
+    monkeypatch.setenv("LATTIX_VIEW_OVERRIDES", str(tmp_path / "rules.yaml"))
+    status, r, _ = api(server, "POST", "/api/read", body={"source": {"sample": "helix/bend_line.dat"}})
+    sid = r["session"]
+    status, sc, _ = api(server, "GET", f"/plugins/lattix_view/api/scene?session={sid}")
+    ov = sc["overrides"]
+    assert status == 200 and str(tmp_path / "rules.yaml") in ov["files"]
+    kinds = [sc["kinds"][k] for k in sc["el"]["kind"]]
+    quads = [str(i) for i, k in enumerate(kinds) if k == "Quadrupole"]
+    bends = [str(i) for i, k in enumerate(kinds) if k == "Bend"]
+    assert quads and all(ov["assign"][q]["fit"] == "length" and "model" in ov["assign"][q] for q in quads)
+    assert all(ov["assign"][b] == {"hide": True, "rule": "rules.yaml"} for b in bends)
+    assert any("not found" in e for e in ov["errors"])
+    handle = ov["assign"][quads[0]]["model"]
+    assert ov["models"][handle]["file"] == "cube.glb"
+    assert ov["models"][handle]["url"] == f"/plugins/lattix_view/models/{handle}"
+    status, data, resp = api(server, "GET", ov["models"][handle]["url"])
+    assert status == 200 and data[:4] == b"glTF" and resp.getheader("Content-Type") == "model/gltf-binary"
+    assert api(server, "GET", "/plugins/lattix_view/models/0000000000000000")[0] == 404
+    assert api(server, "GET", "/plugins/lattix_view/models/../pyproject.toml")[0] == 404

@@ -80,7 +80,7 @@ export function optionsFor(n, { style = "realistic", lod = 0 } = {}) {
 
 /** Build the parts of one element; schematic style collapses everything to the kind slot. */
 export function build(spec, o) {
-  const arch = archetypeFor(spec);
+  const arch = spec.archetype && BUILDERS[spec.archetype] ? [spec.archetype, spec.params && spec.params.n] : archetypeFor(spec);
   if (!arch) return [];
   const [name, arg] = arch;
   let parts = BUILDERS[name](spec, o, arg);

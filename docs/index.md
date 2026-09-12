@@ -9,7 +9,8 @@ Pages:
 
 - `models.md`: the model library, one archetype per element kind and instrument family, with the
   sizing rules and what each one is a guess about.
-- `overrides.md`: replacing a model with a site's own glTF.
+- `overrides.md`: replacing a model with a site's own glTF, re-parameterising an archetype, hiding an
+  element; where the rule files live and how they are checked.
 - `measure.md`: the measurement tools.
 - `exports.md`: survey tables, scene files, screenshots and video.
 - `standalone.md`: running the viewer without the workbench.

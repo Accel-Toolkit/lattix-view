@@ -250,6 +250,20 @@ function rebuild() {
   applyXray();
   scene3.add(state.scene.group);
   if (state.selection != null && state.selection < state.scene.n) select(state.selection, false);
+  const scene = state.scene;
+  scene.loadOverrides().then(report => { if (scene === state.scene) modelsReport(report); });
+}
+
+function modelsReport(report) {
+  const ov = state.payload.overrides || {};
+  const lines = [];
+  for (const f of ov.files || []) lines.push(`file: ${f}`);
+  for (const e of ov.errors || []) lines.push(`error: ${e}`);
+  for (const r of report) lines.push(`${r.name}: ${r.status} (${r.rule}) ${r.detail}`);
+  $("#models-report").textContent = lines.join("\n") || "no override files apply to this deck";
+  const bad = (ov.errors || []).length + report.filter(r => r.status === "failed").length;
+  $("#btn-models").textContent = report.length || (ov.errors || []).length ? `models: ${report.length}${bad ? ` (${bad} failed)` : ""}` : "models";
+  window.lattix3d.overrideReport = report;
 }
 
 function applyXray() {
@@ -361,7 +375,9 @@ $("#btn-probe").addEventListener("click", () => measure.setTool("probe"));
 $("#btn-heading").addEventListener("click", () => measure.addHeading(state.selection));
 $("#btn-section").addEventListener("click", () => { section.on = !section.on && state.selection != null; section.offset = 0; applySection(); });
 $("#btn-list").addEventListener("click", () => { $("#measures").hidden = !$("#measures").hidden; });
-$("#btn-export").addEventListener("click", () => { $("#exports").hidden = !$("#exports").hidden; $("#measures").hidden = true; });
+$("#btn-export").addEventListener("click", () => { $("#exports").hidden = !$("#exports").hidden; $("#measures").hidden = true; $("#models").hidden = true; });
+$("#btn-models").addEventListener("click", () => { $("#models").hidden = !$("#models").hidden; $("#exports").hidden = true; });
+$("#models button[data-act='close']").addEventListener("click", () => { $("#models").hidden = true; });
 $("#section-offset").addEventListener("input", ev => { section.offset = parseFloat(ev.target.value); applySection(); });
 $("#section-axis").addEventListener("click", () => { section.axis = { s: "x", x: "y", y: "s" }[section.axis]; section.offset = 0; $("#section-offset").value = 0; applySection(); });
 $("#search").addEventListener("keydown", ev => {

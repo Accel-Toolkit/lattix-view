@@ -108,6 +108,7 @@ a { color: var(--accent); }
     <button id="btn-list" title="the measurements list (Shift+L)">list</button>
     <span class="sep"></span>
     <button id="btn-export" title="survey table, glTF, OBJ, screenshot, video, site pose">export</button>
+    <button id="btn-models" title="the glTF overrides that apply to this deck">models</button>
     <span class="sep"></span>
     <button id="btn-style" title="schematic or realistic models (v)">schematic</button>
     <button id="btn-xray" title="see through yokes and cavities (x)">x-ray</button>
@@ -139,6 +140,11 @@ a { color: var(--accent); }
   </div>
   <div id="measures" class="panel" hidden></div>
   <div id="exports" class="panel" hidden></div>
+  <div id="models" class="panel" hidden>
+    <div class="head"><b>Model overrides</b><span class="spacer"></span><button data-act="close" title="hide the panel">×</button></div>
+    <div class="hint">rules from ~/.config/lattix-view/overrides.yaml, LATTIX_VIEW_OVERRIDES, &lt;deck&gt;.view.yaml and --overrides; see docs/overrides.md</div>
+    <pre id="models-report" style="font: 11.5px var(--font-mono); white-space: pre-wrap; margin: 0"></pre>
+  </div>
   <div id="msg"><div>loading…</div></div>
   <div id="tip" hidden></div>
 </div>
