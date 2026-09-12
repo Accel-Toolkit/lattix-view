@@ -26,25 +26,42 @@ html, body { height: 100%; margin: 0; background: var(--bg-0); color: var(--text
 #app { position: relative; width: 100%; height: 100%; overflow: hidden; }
 #view { position: absolute; inset: 0; }
 #view canvas { display: block; width: 100%; height: 100%; outline: none; }
-#bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-       background: color-mix(in srgb, var(--bg-1) 88%, transparent); border-bottom: 1px solid var(--line); z-index: 2; }
+#view .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.el-label { font: 11px var(--font-mono); color: var(--text-1); background: color-mix(in srgb, var(--bg-2) 80%, transparent);
+            padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line); white-space: nowrap; transform: translate(-50%, -100%); }
+.el-label.pinned { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.axis-label { font: 600 12px var(--font-ui); text-shadow: 0 0 4px var(--bg-0); }
+#bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+       background: color-mix(in srgb, var(--bg-1) 88%, transparent); border-bottom: 1px solid var(--line); z-index: 2; flex-wrap: wrap; }
 #bar .name { font-weight: 600; color: var(--text-0); }
 #bar .muted, .muted { color: var(--text-2); }
 #bar .spacer { flex: 1; }
+#bar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
 button { font: inherit; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px;
          padding: 3px 9px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-#tip { position: fixed; z-index: 5; pointer-events: none; max-width: 360px; padding: 6px 8px; border-radius: 4px;
+input[type=text] { font: inherit; color: var(--text-0); background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; }
+#tip { position: fixed; z-index: 5; pointer-events: none; max-width: 380px; padding: 6px 8px; border-radius: 4px;
        background: color-mix(in srgb, var(--bg-2) 94%, transparent); border: 1px solid var(--line); color: var(--text-0);
        white-space: pre-line; box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 12px; }
 #tip[hidden] { display: none; }
-#status { position: absolute; left: 10px; bottom: 8px; z-index: 2; color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; }
+#status { position: absolute; left: 10px; right: 120px; bottom: 8px; z-index: 2; display: flex; gap: 14px; align-items: center;
+          color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; pointer-events: none; }
+#scalebar { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+#scalebar .bar { height: 3px; background: var(--text-2); border-left: 1px solid var(--text-2); border-right: 1px solid var(--text-2); }
 #msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3;
        padding: 2em; text-align: center; color: var(--text-1); background: var(--bg-0); }
 #msg[hidden] { display: none; }
 #msg code { font-family: var(--font-mono); background: var(--bg-2); padding: 1px 4px; border-radius: 3px; }
 #msg .err { color: var(--err); }
+#help { position: absolute; right: 12px; top: 44px; z-index: 4; max-width: 420px; padding: 10px 12px; border-radius: 6px;
+        background: color-mix(in srgb, var(--bg-2) 96%, transparent); border: 1px solid var(--line); color: var(--text-1);
+        font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+#help[hidden] { display: none; }
+#help table { border-collapse: collapse; }
+#help td { padding: 1px 8px 1px 0; vertical-align: top; }
+#help kbd { font: 11px var(--font-mono); background: var(--bg-1); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 a { color: var(--accent); }
 </style>
 </head>
@@ -53,17 +70,42 @@ a { color: var(--accent); }
   <div id="bar">
     <span class="name" id="deck-name">lattix 3D</span>
     <span class="muted" id="deck-info"></span>
+    <input type="text" id="search" placeholder="find element  /" style="width: 13em">
     <span class="spacer"></span>
     <button id="btn-fit" title="fit the whole lattice (0)">fit</button>
     <button id="btn-top" title="top view (t)">top</button>
     <button id="btn-side" title="side view (e)">side</button>
     <button id="btn-front" title="front view, looking downstream (n)">front</button>
-    <button id="btn-orbit" title="show the reference orbit" aria-pressed="true">orbit</button>
+    <button id="btn-beam" title="beam's eye at the selection (b)">beam's eye</button>
+    <span class="sep"></span>
+    <button id="btn-fly" title="fly mode: W A S D Q E, Shift fast (Space)">fly</button>
+    <button id="btn-follow" title="ride the beam along s: J K step, P plays (r)">ride</button>
+    <span class="sep"></span>
+    <button id="btn-style" title="schematic or realistic models (m)">schematic</button>
+    <button id="btn-xray" title="see through yokes and cavities (x)">x-ray</button>
+    <button id="btn-labels" title="labels: off, selected, all (l)">labels</button>
+    <button id="btn-orbit" title="show the reference orbit (o)" aria-pressed="true">orbit</button>
     <button id="btn-grid" title="floor grid (g)" aria-pressed="true">grid</button>
+    <button id="btn-help" title="keyboard shortcuts (?)">?</button>
     <a id="workbench-link" class="muted" hidden href="/">open in the workbench</a>
   </div>
   <div id="view"></div>
-  <div id="status"></div>
+  <div id="status"><span id="status-text"></span><span id="scalebar"><span class="bar"></span><span class="len"></span></span><span id="status-mode"></span></div>
+  <div id="help" hidden>
+    <b>lattix 3D</b>
+    <table>
+      <tr><td><kbd>/</kbd></td><td>find an element by name, <kbd>#12</kbd> by index, <kbd>s=12.5</kbd> by position</td></tr>
+      <tr><td><kbd>0</kbd> <kbd>f</kbd></td><td>fit all, fit the selection</td></tr>
+      <tr><td><kbd>t</kbd> <kbd>e</kbd> <kbd>n</kbd> <kbd>b</kbd></td><td>top, side, front, beam's eye at the selection</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>fly mode: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>Q</kbd><kbd>E</kbd>, drag to look, <kbd>Shift</kbd> fast</td></tr>
+      <tr><td><kbd>r</kbd></td><td>ride the beam: <kbd>j</kbd> <kbd>k</kbd> step, <kbd>p</kbd> play, <kbd>[</kbd> <kbd>]</kbd> speed</td></tr>
+      <tr><td><kbd>m</kbd> <kbd>x</kbd> <kbd>l</kbd></td><td>schematic models, x-ray, label mode</td></tr>
+      <tr><td><kbd>o</kbd> <kbd>g</kbd></td><td>reference orbit, floor grid</td></tr>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>previous, next element (<kbd>Shift</kbd> skips drifts)</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>clear the selection, leave fly or ride</td></tr>
+    </table>
+    <div class="muted">Axes: +Z downstream at the start, +Y up, +X to the left looking downstream (MAD-X survey).</div>
+  </div>
   <div id="msg"><div>loading…</div></div>
   <div id="tip" hidden></div>
 </div>
