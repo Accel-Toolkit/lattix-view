@@ -7,7 +7,7 @@ DECK = "flame/ALL_lattice.lat"
 BUILD_MS = 3000
 CALLS = 300
 TRIANGLES = 1_500_000
-PICK_MS = 4.0
+PICK_MS = 10.0                 # about 1.5 ms on a workstation; the shared CI runners measure 7
 KEEP = 32
 
 
