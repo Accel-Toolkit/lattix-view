@@ -97,7 +97,8 @@ def cmd_overrides(a) -> int:
     print(f"rules: {len(rules)}")
     for lr in rules:
         r = lr.rule
-        action = f"model {r.model}" if r.model else f"archetype {r.archetype} {r.params}" if r.archetype else "hide"
+        action = (f"model {r.model}" if r.model else f"archetype {r.archetype} {r.params}" if r.archetype
+                  else f"family {r.family}" if r.family else "hide")
         crit = ", ".join(f"{k}={v}" for k, v in r.match.model_dump(by_alias=True).items() if v is not None)
         print(f"  {lr.source.name}#{lr.order % 10_000}: {crit or 'everything'} -> {action}")
     lat, rep = read(str(deck), a.format, **_kv(a.read_option))
@@ -110,6 +111,8 @@ def cmd_overrides(a) -> int:
         i = int(k)
         if entry.get("hide"):
             what = "hidden"
+        elif entry.get("family"):
+            what = f"family {entry['family']}"
         elif entry.get("archetype"):
             what = f"archetype {entry['archetype']} {entry.get('params') or ''}".rstrip()
         else:

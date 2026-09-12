@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from lattix_view.overrides import CLI_FILES, ModelRegistry, assignments, discover, load_all, load_file, resolve
+from lattix_view.scene import KINDS
 
 
 def cube_glb(path: Path, size: float = 1.0) -> Path:
@@ -144,5 +145,28 @@ def test_the_shipped_example_parses():
 
     example = Path(__file__).resolve().parents[1] / "overrides" / "example.yaml"
     rules = load_file(example, 0)
-    assert len(rules) == 6 and rules[0].defaults.units == "m" and rules[-1].rule.hide
+    assert len(rules) == 7 and rules[0].defaults.units == "m" and rules[-1].rule.hide
     assert rules[4].rule.archetype == "cavity" and rules[4].rule.params == {"n_cell": 2}
+    assert rules[5].rule.family == "wire" and rules[5].rule.match.name == "I?MW*"
+
+
+def test_family_rules_change_the_family_and_size_of_the_payload(tmp_path: Path, monkeypatch):
+    from lattix_view.routes import overrides_for
+    from lattix_view.scene import scene_view
+    from tests.conftest import load
+
+    monkeypatch.delenv("LATTIX_VIEW_OVERRIDES", raising=False)
+    monkeypatch.setenv("LATTIX_VIEW_CONFIG_DIR", str(tmp_path / "nowhere"))
+    lat, placed, rep = load("helix/bend_line.dat")
+    payload = scene_view(lat, placed, fmt="tracewin", path="bend_line.dat")
+    el = payload["el"]
+    quads = [k for k in range(payload["lattice"]["n"]) if KINDS[el["kind"][k]] == "Quadrupole"]
+    before = list(el["size"][3 * quads[0]:3 * quads[0] + 3])
+    rules = write_rules(tmp_path / "fam.yaml", "version: 1\nrules:\n  - match: {kind: Quadrupole}\n    family: wire\n")
+    bad = write_rules(tmp_path / "bad.yaml", "version: 1\nrules:\n  - match: {kind: Bend}\n    family: nothing\n")
+    block = overrides_for(payload, "bend_line.dat", [rules, bad])
+    assert len(block["errors"]) == 1 and "unknown family" in block["errors"][0]
+    assert block["assign"][str(quads[0])] == {"family": "wire", "rule": "fam.yaml"}
+    assert payload["families"][el["fam"][quads[0]]] == "wire"
+    assert list(el["size"][3 * quads[0]:3 * quads[0] + 3]) != before and el["size"][3 * quads[0] + 1] > before[1]
+    assert not any(str(k) in block["assign"] for k in range(payload["lattice"]["n"]) if KINDS[el["kind"][k]] == "Bend")

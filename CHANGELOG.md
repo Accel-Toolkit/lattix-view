@@ -49,7 +49,9 @@ All notable changes to lattix-view are recorded here. The format follows
 - Markers that name a device (a TraceWin deck's `; s NAME TYPE` comments, read by lattix as named
   markers with tags) are drawn as that device: the name and the type words are looked up in a
   vocabulary of the usual device words and mapped to the instrument archetypes, with a new pump
-  model hanging under the pipe and a two-plane corrector family.
+  model hanging under the pipe and a two-plane corrector family; a drift that names a device is
+  drawn as that device over its length; an override rule's `family:` names the device when the
+  deck's words cannot.
 - Browser tests (`tests/e2e`, Playwright on headless Chromium with SwiftShader): every push
   renders three decks, hovers, measures, exports, applies an override, loses and restores the
   context, and holds the draw-call, triangle, build-time and pick-time budgets on the FRIB deck;

@@ -9,7 +9,7 @@ export function archetypeFor(spec) {
   const k = spec.kind, fam = spec.fam || "";
   if (spec.flags & HIDDEN) return null;
   switch (k) {
-    case "Drift": return ["pipe"];
+    case "Drift": return fam ? instrumentArchetype(fam) : ["pipe"];
     case "Quadrupole": return ["multipole", 2];
     case "Sextupole": return ["multipole", 3];
     case "Octupole": return ["multipole", 4];

@@ -46,6 +46,8 @@ rules:
   - match: {name: "CAV_HWR_*"}
     archetype: cavity
     params: {n_cell: 2}
+  - match: {name: "I?MW*"}
+    family: wire
   - match: {name: BPM01}
     hide: true
 ```
@@ -76,6 +78,12 @@ One rule applies per element.
   `rfq` (`r0`, `modulation`), `corrector` (`hkick`, `vkick`, `electric`), `collimator`, `foil`,
   `bpm`, `profile`, `current`, `sidedetector`, `valve`, `generic`, `abstract`, `ring`, `triad`,
   `flag`, `mapextent` (`r_max`). Parameters not listed come from the element itself.
+- `family: NAME`: the element is drawn as a device of that instrument family, at that family's
+  size (`bpm`, `bpm_h`, `bpm_v`, `phase`, `profile`, `wire`, `screen`, `laser`, `emittance`, `cup`,
+  `current`, `current_gap`, `loss`, `valve`, `pump`, `chopper`, `corrector`, `corrector_h`,
+  `corrector_v`, `collimator`, `absorber`, `generic`). This is how a site teaches the viewer its
+  own device names when the deck's words say nothing (`match: {name: "I?MW*"}` with
+  `family: wire`); see "Markers that name a device" in `models.md`.
 - `hide: true`: the element is not drawn. It keeps its survey frames, so its label, its snap
   points and its rows in the survey table stay; the scene exports (glTF, OBJ) leave it out.
 

@@ -15,6 +15,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from lattix_view.families import FAMILIES
+
 ANCHORS = ("centre", "entrance", "exit", "chord")
 FITS = ("none", "length", "bore", "box")
 MATERIALS = ("keep", "kind", "tint")
@@ -59,6 +61,7 @@ class Rule(BaseModel):
     archetype: str | None = None             # or a procedural archetype with parameters
     params: dict = Field(default_factory=dict)
     hide: bool = False
+    family: str | None = None                # or draw the element as a device of this instrument family
     anchor: Literal["centre", "entrance", "exit", "chord"] | None = None
     fit: Literal["none", "length", "bore", "box"] | None = None
     scale: float | list[float] = 1.0
@@ -68,8 +71,10 @@ class Rule(BaseModel):
 
     @model_validator(mode="after")
     def _one_action(self):
-        if sum(bool(x) for x in (self.model, self.archetype, self.hide)) != 1:
-            raise ValueError("a rule needs exactly one of model, archetype or hide")
+        if sum(bool(x) for x in (self.model, self.archetype, self.hide, self.family)) != 1:
+            raise ValueError("a rule needs exactly one of model, archetype, family or hide")
+        if self.family is not None and self.family not in FAMILIES:
+            raise ValueError(f"unknown family {self.family!r}; one of {', '.join(f for f in FAMILIES if f)}")
         if len(self.rotate) != 3 or len(self.offset) != 3:
             raise ValueError("rotate and offset take three numbers")
         if isinstance(self.scale, list) and len(self.scale) != 3:
@@ -199,6 +204,9 @@ def assignments(rules: list[LoadedRule], elements: list[dict], registry: ModelRe
         r = lr.rule
         if r.hide:
             assign[str(i)] = {"hide": True, "rule": str(lr.source.name)}
+            continue
+        if r.family:
+            assign[str(i)] = {"family": r.family, "rule": str(lr.source.name)}
             continue
         entry: dict = {"anchor": r.anchor or lr.defaults.anchor, "fit": r.fit or lr.defaults.fit,
                        "scale": r.scale if isinstance(r.scale, list) else [r.scale] * 3, "rotate": list(r.rotate),

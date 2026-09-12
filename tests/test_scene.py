@@ -202,6 +202,10 @@ def test_markers_named_by_comments_become_devices(tmp_path):
         "QF1:QUAD 200 5.0 25.4 ; 0.600 QF1 QUADRUPOLE K1=0.5\n"
         "MARKER ; 0.700 DCH01 HKICKER\n"
         "DRIFT 0.000 25.400 ; BLM3\n"
+        "MARKER ; 0.800 VT101 VKICKER\n"
+        "DRIFT 60 25.4 ; 0.800 VT101 VKICKER (kicker body, zero kick)\n"
+        "DRIFT 100 25.4 ; 0.900 HT102 HKICKER\n"
+        "DRIFT 0.000 25.400 ; 1.0 IHMW1B1 MONITOR\n"
         "END\n", encoding="utf-8")
     lat, rep = read(deck, kinetic_energy_eV=2.1e6)
     placed = propagate(lat)
@@ -209,9 +213,14 @@ def test_markers_named_by_comments_become_devices(tmp_path):
     el = payload["el"]
     kinds = [KINDS[k] for k in el["kind"]]
     fams = [payload["families"][f] for f in el["fam"]]
-    assert kinds == ["Drift", "Marker", "Drift", "Marker", "Drift", "Quadrupole", "Marker", "Marker"]
-    assert el["name"] == ["DRIFT_0001", "HKV", "DRIFT_0002", "IONPUMP", "DRIFT_0003", "QF1", "DCH01", "BLM3"]
-    assert fams == ["", "bpm", "", "pump", "", "", "corrector_h", "loss"]
+    assert kinds == ["Drift", "Marker", "Drift", "Marker", "Drift", "Quadrupole", "Marker", "Marker",
+                     "Marker", "Drift", "Drift", "Marker"]
+    assert el["name"] == ["DRIFT_0001", "HKV", "DRIFT_0002", "IONPUMP", "DRIFT_0003", "QF1", "DCH01", "BLM3",
+                          "VT101", "VT101_2", "HT102", "IHMW1B1"]
+    # the kicker named twice is drawn once, on its body; a lone kicker body is a corrector over its length;
+    # a site's multiwire name says nothing to the vocabulary, so it is what its type word says (a monitor)
+    assert fams == ["", "bpm", "", "pump", "", "", "corrector_h", "loss", "", "corrector_v", "corrector_h", "bpm"]
+    assert el["size"][3 * 9 + 2] == 0.03 and el["size"][3 * 10] >= 0.08
     # a device marker is sized like the instrument it names, a bare zero-length drift stays thin
     assert el["size"][3 * 1 + 2] >= 0.02 and el["size"][3 * 3 + 1] > 0.15 and el["size"][3 * 4 + 2] <= 0.01
     assert el["L"][1] == 0 and (el["flags"][1] & F_THIN)

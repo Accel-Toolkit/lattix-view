@@ -136,16 +136,33 @@ def _params(e: Element, p: Placed, lat: Lattice, d: dict) -> dict:
 
 
 def _family(e: Element) -> str:
-    """The archetype family of an instrument, or of a marker that names a device (a survey marker read
-    from a deck's own comments: its type words and its name), else ""."""
+    """The archetype family of an instrument, or of a marker or drift that names a device (read from a
+    deck's own comments: its type words and its name), else ""."""
     stem = (e.name or "").split("_")[0]
     words = [stem, stem.rstrip("0123456789")] + list((e.meta or {}).get("tags") or [])   # the name, then the type words
     if e.kind == "Instrument":
         fam = family_of(e.family)
         return fam if fam != "generic" else (family_from_words(words) or fam)
-    if e.kind == "Marker":
+    if e.kind in ("Marker", "Drift"):
         return family_from_words(words) if (e.meta or {}).get("comment") else ""
     return ""
+
+
+def _families(elements: list[Element]) -> list[str]:
+    """The family of every element; a device the deck names twice, as a zero-length marker and as the
+    drift that is its body (``MARKER ; s VT101 VKICKER`` then ``DRIFT 60 25.4 ; s VT101 VKICKER``), is
+    drawn once, on the body: the marker keeps its ring."""
+    fams = [_family(e) for e in elements]
+    stems = [(e.name or "").split("_")[0] for e in elements]
+    for k, e in enumerate(elements):
+        if e.kind != "Marker" or not fams[k]:
+            continue
+        for j in (k - 1, k + 1):
+            if 0 <= j < len(elements) and elements[j].kind == "Drift" and elements[j].length > 0 \
+                    and fams[j] == fams[k] and stems[j] == stems[k]:
+                fams[k] = ""
+                break
+    return fams
 
 
 def _label(e: Element, d: dict, prm: dict) -> str:
@@ -331,18 +348,19 @@ def scene_view(lat: Lattice, placed: list[Placed], *, fmt: str = "", path: str |
         "pb", "qb", "pch", "qch", "arc", "size", "ap", "apshape", "bore", "boresrc", "clear", "beta_in", "brho_in",
         "lambda_in", "strength", "flags", "label", "params")}
     raw_strength: list[float] = []
+    fams = _families(elements)
     for k, (f, e, p) in enumerate(zip(frames, elements, placed_of, strict=True)):
         ref = p.ref_in or lat.reference
         d = derived_numbers(p, lat)
         prm = _params(e, p, lat, d)
         sub = _sub_kind(e, f)
-        fam = _family(e)
+        fam = fams[k]
         hx_b, hy_b, shape, src = bores[k]
         clear_in = max(0.0, f.s_in - exits_before[k])
         clear_out = max(0.0, entries_after[k] - f.s_out)
         f_rf = prm.get("f") if isinstance(prm.get("f"), float) else None
         lam = C_LIGHT / f_rf if f_rf else (C_LIGHT / ref.rf_frequency_Hz if ref.rf_frequency_Hz else None)
-        size_kind = "Instrument" if e.kind == "Marker" and fam else e.kind      # a marker that names a device
+        size_kind = "Instrument" if e.kind in ("Marker", "Drift") and fam else e.kind   # names a device: sized as one
         size = outer_size(size_kind, sub, fam, float(e.length), (hx_b, hy_b), prm, lam, (clear_in, clear_out))
         flags = (F_REVERSED if f.reversed else 0) | (F_SHIFTED if f.shifted else 0) | (F_THIN if e.length <= 0 else 0) \
             | (F_CHILD if f.parent is not None else 0) | (F_SKEW if f.roll else 0) \

@@ -32,7 +32,11 @@ export class OverrideModels {
     for (const [key, entry] of Object.entries(ov.assign)) {
       const i = +key;
       const name = el.name[i];
-      if (entry.hide || entry.archetype) { this.report.push({ i, name, rule: entry.rule, status: entry.hide ? "hidden" : "archetype", detail: entry.archetype || "" }); continue; }
+      if (entry.hide || entry.archetype || entry.family) {
+        const status = entry.hide ? "hidden" : entry.archetype ? "archetype" : "family";
+        this.report.push({ i, name, rule: entry.rule, status, detail: entry.archetype || entry.family || "" });
+        continue;
+      }
       try {
         const source = await loadOne(entry.model);
         const model = source.clone(true);

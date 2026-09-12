@@ -71,9 +71,13 @@ reads as a `Marker` named `HKV` with the type words as tags. The viewer looks th
 MONITOR, HMONITOR, BLM, WS, SCREEN, OTR, YAG, FC, ACCT, DCCT, TOROID, PUMP, IONPUMP, VALVE, GV,
 KICKER, HKICKER, VKICKER, CORR, HCOR, VCOR, XCOR, YCOR, DCH, DCV, STEERER, CHOPPER, COLLIMATOR,
 SCRAPER, ABSORBER, DUMP, ...) and draws the first match with that family's instrument archetype,
-sized as the instrument would be; a marker whose words say nothing stays a ring. An instrument
-whose family lattix could not place is looked up the same way before it falls back to the generic
-model.
+sized as the instrument would be; a marker whose words say nothing stays a ring. A drift that
+names a device the same way (`DRIFT 60 25.4 ; 4.998 VT101 VKICKER`, a corrector body with zero
+kick) is drawn as that device over its length, and a device the deck names twice, as a marker and
+as the drift that is its body, is drawn once, on the body. An instrument whose family lattix could
+not place is looked up the same way before it falls back to the generic model. Names the
+vocabulary cannot know (`IHMW1B1` for a multiwire) get their family from an override rule
+(`family: wire`, see `overrides.md`).
 
 Elements that are not drawn: `Directive`, a `Taylor` that stands in for RF focusing
 (`meta.rf_focusing_of`), and a `Superposition` itself (its children are drawn). Hidden elements

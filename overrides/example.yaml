@@ -36,5 +36,7 @@ rules:
   - match: {name: "CAV_HWR_*"}
     archetype: cavity
     params: {n_cell: 2}
+  - match: {name: "I?MW*"}          # a site's multiwire names: draw them as wire scanners
+    family: wire
   - match: {name: BPM01}
     hide: true

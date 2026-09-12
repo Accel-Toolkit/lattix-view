@@ -15,6 +15,7 @@ from lattix.ui.server import ApiError
 from lattix_view._version import __version__
 from lattix_view.overrides import ModelRegistry, assignments, discover, load_all
 from lattix_view.scene import KINDS, scene_view
+from lattix_view.sizing import outer_size
 
 PREFIX = "/plugins/lattix_view"
 MODELS = ModelRegistry()              # the model files a rule named, served by handle only
@@ -138,9 +139,28 @@ def overrides_for(payload: dict, path: str | None, extra: list[Path] | None = No
                          "family": prm.get("family") or payload["families"][el["fam"][k]],
                          "format": payload["lattice"]["format"], "original_type": prm.get("original_type")})
     block = assignments(rules, elements, MODELS, PREFIX, errors)
+    apply_family_rules(payload, block)
     block["files"] = [str(f) for f in files]
     block["errors"] = errors
     return block
+
+
+def apply_family_rules(payload: dict, block: dict) -> None:
+    """A ``family`` rule draws an element as a device of that family: the payload's family and outer
+    size change here, on the server, so the page, the exports and the measurements agree."""
+    el = payload["el"]
+    families = payload["families"]
+    for key, entry in block.get("assign", {}).items():
+        fam = entry.get("family")
+        if not fam or fam not in families:
+            continue
+        k = int(key)
+        el["fam"][k] = families.index(fam)
+        sub = payload["subkinds"][el["sub"][k]]
+        lam = el["lambda_in"][k] or None
+        size = outer_size("Instrument", sub, fam, float(el["L"][k]), (el["bore"][2 * k], el["bore"][2 * k + 1]),
+                          el["params"][k] or {}, lam, (el["clear"][2 * k], el["clear"][2 * k + 1]))
+        el["size"][3 * k:3 * k + 3] = [round(max(v, 1e-4), 5) for v in size]
 
 
 def r_models(handler, query, handle: str) -> None:

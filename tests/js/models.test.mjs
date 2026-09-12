@@ -143,6 +143,9 @@ test("a marker that names a device is drawn as that device, a bare marker as a r
   assert.deepEqual(archetypeFor(spec("Marker", "", "bpm")), ["bpm"]);
   assert.deepEqual(archetypeFor(spec("Marker", "", "pump")), ["pump"]);
   assert.deepEqual(archetypeFor(spec("Marker", "", "corrector")), ["corrector"]);
+  assert.deepEqual(archetypeFor(spec("Drift", "", "corrector_v")), ["corrector"]);
+  assert.deepEqual(archetypeFor(spec("Drift", "", "wire")), ["profile"]);
+  assert.deepEqual(archetypeFor(spec("Drift")), ["pipe"]);
   const pump = buildMerged({ ...spec("Marker", "", "pump", { thin: true }), size: [0.06, 0.21, 0.02] }, optionsFor(10));
   assert.ok(pump.triangles > 50 && pump.bounds.min[1] < -0.15 && pump.bounds.max[1] < 0.05, "the pump hangs under the pipe");
   const corr = buildMerged({ ...spec("Marker", "", "corrector", { thin: true }), size: [0.09, 0.09, 0.05] }, optionsFor(10));

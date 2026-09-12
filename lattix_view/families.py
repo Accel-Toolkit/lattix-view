@@ -35,7 +35,8 @@ def family_of(family: str | None) -> str:
 _WORDS: dict[str, str] = {
     "BPM": "bpm", "MONITOR": "bpm", "HMONITOR": "bpm_h", "VMONITOR": "bpm_v", "PICKUP": "bpm", "BPMS": "bpm",
     "PHASE": "phase", "BLM": "loss", "LOSS": "loss", "LOSSMONITOR": "loss",
-    "WS": "wire", "WIRE": "wire", "WIRESCANNER": "wire", "SCREEN": "screen", "OTR": "screen", "YAG": "screen",
+    "WS": "wire", "WIRE": "wire", "WIRESCANNER": "wire", "MW": "wire", "MWS": "wire", "MULTIWIRE": "wire",
+    "HARP": "wire", "SEM": "wire", "SCREEN": "screen", "OTR": "screen", "YAG": "screen",
     "VIEWER": "screen", "PROFILE": "profile", "PROFILEMONITOR": "profile", "EMITTANCE": "emittance",
     "EMIT": "emittance", "SLIT": "emittance", "LASER": "laser", "LASERWIRE": "laser",
     "FC": "cup", "CUP": "cup", "FARADAY": "cup", "FARADAYCUP": "cup",
