@@ -1,0 +1,25 @@
+{
+ "package": "three",
+ "version": "0.186.0",
+ "url": "https://registry.npmjs.org/three/-/three-0.186.0.tgz",
+ "tarball_sha256": "61eeff9d7616005c9a481c796f52287d81fbbbc0d55eaca5565322924252c1aa",
+ "license": "MIT",
+ "minified": true,
+ "files": {
+  "LICENSE": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc",
+  "three.module.js": "aad921333b100197a75c6f690b06898e33c12bace7dbf51e942c8c3a10479cfd",
+  "three.core.js": "c98e8232b2fcf8cf03f540e6f2b2cc9a388f455ad53f970b7213d9846d1340dd",
+  "addons/controls/OrbitControls.js": "ea9502538446a3f2dd98fcf9f2144874190fae6a8c5678c390ffc14e99414380",
+  "addons/loaders/GLTFLoader.js": "48ab7355242457ec185da24adf1f4c830e58b7546ab84984bf7dfff5ab811eb8",
+  "addons/exporters/GLTFExporter.js": "4fc2c76b8ce6ebe009175e8a29bf21e0888fbe11b7cdbe5a21c099a056aa253b",
+  "addons/renderers/CSS2DRenderer.js": "969ceda74dc900ada8ba4e03b137d68244ea3e8b01e9a13cf26fc6d48a563370",
+  "addons/utils/BufferGeometryUtils.js": "1b22241b1d279e0bf23ff6bd348fe129927b7bfc0a5331f2075ea5493c9f962a",
+  "addons/utils/SkeletonUtils.js": "3e601132f1de2e164bc572f2d8792977dc51f2414251448efa3298025aeec6c5",
+  "addons/environments/RoomEnvironment.js": "1984b1fedfbe5eb34c4842bb7050950bfc6c0cd01fad5744a89d2d6409f58a13",
+  "addons/lines/Line2.js": "8a4e786f05fa751451ed49fec79b75b4cccc2d4a411645ef8bf053801547a011",
+  "addons/lines/LineMaterial.js": "2fdbb9258d49796e2e1118d180b6361f58f5e51f846b2b9b451e92a239e5f8df",
+  "addons/lines/LineGeometry.js": "f800f835003cce4830db5b22aae0711c3df0c19a687984d335612cf8dc6066fd",
+  "addons/lines/LineSegments2.js": "1b96a6eb0eb55da534b595bd2bcf2562372d0e94f0b0d4201bcaa5a4ea2f6026",
+  "addons/lines/LineSegmentsGeometry.js": "3f477189e90b9db4703b1fecb04c1fe72b75c059d5a41f6b73a77c13a2e8fbc0"
+ }
+}

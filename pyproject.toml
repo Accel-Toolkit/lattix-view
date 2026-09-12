@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lattix-view"
+dynamic = ["version"]
+description = "A 3D viewer for accelerator lattices: every lattice lattix reads, drawn with a model per element on its survey coordinates, with measurement tools and exports."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "THIRD_PARTY.md"]
+authors = [{name = "Abhishek Pathak"}]
+keywords = [
+  "accelerator physics", "beam dynamics", "lattice", "3D", "survey", "visualisation", "WebGL",
+  "TraceWin", "MAD-X", "Elegant", "Bmad", "xsuite", "ImpactX", "lattix",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Environment :: Web Environment",
+]
+dependencies = [
+  "lattix>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Accel-Toolkit/lattix-view"
+Repository = "https://github.com/Accel-Toolkit/lattix-view"
+Issues = "https://github.com/Accel-Toolkit/lattix-view/issues"
+Documentation = "https://github.com/Accel-Toolkit/lattix-view/blob/main/docs/index.md"
+Changelog = "https://github.com/Accel-Toolkit/lattix-view/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff", "build", "twine>=6.1", "packaging"]
+browser = ["playwright>=1.45"]
+
+[project.scripts]
+lattix-view = "lattix_view.cli:main"
+
+[project.entry-points."lattix.ui.plugins"]
+lattix_view = "lattix_view.plugin:register"
+
+[tool.setuptools.packages.find]
+include = ["lattix_view*"]
+
+[tool.setuptools.package-data]
+lattix_view = ["py.typed", "static/**/*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "lattix_view._version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "browser: needs Playwright and a Chromium (headless WebGL through SwiftShader)",
+  "slow: long-running",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

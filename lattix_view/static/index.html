@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lattix 3D</title>
+<style>
+:root {
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --bg-0: #eef1f5; --bg-1: #f8fafc; --bg-2: #ffffff; --line: #cbd5e1; --text-0: #0f172a; --text-1: #1e293b;
+  --text-2: #475569; --text-dim: #94a3b8; --accent: #0e7490; --accent-2: #0891b2; --warn: #b45309; --err: #b91c1c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-0: #0b0f15; --bg-1: #11161f; --bg-2: #1a2230; --line: #1f2a3a; --text-0: #f8fafc; --text-1: #dbe2eb;
+    --text-2: #b3becc; --text-dim: #6f7d92; --accent: #22d3ee; --accent-2: #67e8f9; --warn: #fbbf24; --err: #f87171;
+  }
+}
+:root[data-theme="dark"] {
+  --bg-0: #0b0f15; --bg-1: #11161f; --bg-2: #1a2230; --line: #1f2a3a; --text-0: #f8fafc; --text-1: #dbe2eb;
+  --text-2: #b3becc; --text-dim: #6f7d92; --accent: #22d3ee; --accent-2: #67e8f9; --warn: #fbbf24; --err: #f87171;
+}
+html, body { height: 100%; margin: 0; background: var(--bg-0); color: var(--text-1); font: 12.5px/1.45 var(--font-ui); }
+#app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#view { position: absolute; inset: 0; }
+#view canvas { display: block; width: 100%; height: 100%; outline: none; }
+#bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+       background: color-mix(in srgb, var(--bg-1) 88%, transparent); border-bottom: 1px solid var(--line); z-index: 2; }
+#bar .name { font-weight: 600; color: var(--text-0); }
+#bar .muted, .muted { color: var(--text-2); }
+#bar .spacer { flex: 1; }
+button { font: inherit; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px;
+         padding: 3px 9px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+#tip { position: fixed; z-index: 5; pointer-events: none; max-width: 360px; padding: 6px 8px; border-radius: 4px;
+       background: color-mix(in srgb, var(--bg-2) 94%, transparent); border: 1px solid var(--line); color: var(--text-0);
+       white-space: pre-line; box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 12px; }
+#tip[hidden] { display: none; }
+#status { position: absolute; left: 10px; bottom: 8px; z-index: 2; color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; }
+#msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3;
+       padding: 2em; text-align: center; color: var(--text-1); background: var(--bg-0); }
+#msg[hidden] { display: none; }
+#msg code { font-family: var(--font-mono); background: var(--bg-2); padding: 1px 4px; border-radius: 3px; }
+#msg .err { color: var(--err); }
+a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <span class="name" id="deck-name">lattix 3D</span>
+    <span class="muted" id="deck-info"></span>
+    <span class="spacer"></span>
+    <button id="btn-fit" title="fit the whole lattice (0)">fit</button>
+    <button id="btn-top" title="top view (t)">top</button>
+    <button id="btn-side" title="side view (e)">side</button>
+    <button id="btn-front" title="front view, looking downstream (n)">front</button>
+    <button id="btn-orbit" title="show the reference orbit" aria-pressed="true">orbit</button>
+    <button id="btn-grid" title="floor grid (g)" aria-pressed="true">grid</button>
+    <a id="workbench-link" class="muted" hidden href="/">open in the workbench</a>
+  </div>
+  <div id="view"></div>
+  <div id="status"></div>
+  <div id="msg"><div>loading…</div></div>
+  <div id="tip" hidden></div>
+</div>
+<script type="module" src="static/app/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+name: fast
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  fast:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        python: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Accel-Toolkit/lattix
+          path: lattix-src
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      # lattix from its main branch until the release that carries the floor frames and the plugin hook is on PyPI
+      - run: pip install -e "./lattix-src" "pals-schema>=0.3.0" && pip install -e ".[dev]"
+      - if: runner.os == 'Linux'
+        run: pip install cpymad
+      - run: ruff check lattix_view tests tools
+      - run: lattix-view check
+      - run: pytest -q
+        env:
+          LATTIX_PUBLIC_DECKS: ${{ github.workspace }}/lattix-src/tests/data/public
+      - run: lattix ui --root lattix-src/tests/data/public --check --no-browser | grep "plugins: lattix_view"
