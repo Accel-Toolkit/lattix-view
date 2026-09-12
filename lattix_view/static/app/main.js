@@ -36,7 +36,8 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.4);
 sun.position.set(5, 10, -3);
 scene3.add(hemi, sun);
 let grid = null;
-window.lattix3d = { state, scene3, camera, ready: false, stats() { return { elements: state.scene ? state.scene.mesh.count : 0, frames: frames }; } };
+window.lattix3d = { state, scene3, camera, ready: false,
+  stats() { return { elements: state.scene ? state.scene.n : 0, frames, ...(state.scene ? state.scene.stats : {}) }; } };
 
 function applyTheme() {
   document.documentElement.setAttribute("data-theme", state.theme);
@@ -95,8 +96,8 @@ function pick(ev) {
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hits = ray.intersectObject(state.scene.mesh, false);
-  return hits.length ? state.scene.drawn[hits[0].instanceId] : -1;
+  const hits = ray.intersectObjects(state.scene.pickables, false);
+  return hits.length ? state.scene.elementAt(hits[0]) : -1;
 }
 const tip = $("#tip");
 function showTip(i, ev) {
@@ -158,7 +159,7 @@ async function load(sid) {
     return;
   }
   if (state.scene) scene3.remove(state.scene.group);
-  state.scene = new LatticeScene(payload, state.palette);
+  state.scene = new LatticeScene(payload, state.palette, state.theme);
   scene3.add(state.scene.group);
   if (grid) scene3.remove(grid);
   const b = state.scene.bounds();
