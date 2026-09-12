@@ -87,6 +87,8 @@ export class Gizmo {
     this.camera.position.copy(camera.position.clone().sub(this.scene.position).normalize().multiplyScalar(3));
     this.camera.up.copy(camera.up);
     this.camera.lookAt(0, 0, 0);
+    const autoClear = renderer.autoClear;
+    renderer.autoClear = false;                 // keep the main image behind the gizmo
     renderer.setViewport(width - s - 12, 12, s, s);
     renderer.setScissor(width - s - 12, 12, s, s);
     renderer.setScissorTest(true);
@@ -94,6 +96,7 @@ export class Gizmo {
     renderer.render(this.scene, this.camera);
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, width, height);
+    renderer.autoClear = autoClear;
   }
   /** Which axis (if any) a click at canvas pixel (x, y) from the top-left lands on; null otherwise. */
   hit(x, y, width, height) {

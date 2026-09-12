@@ -16,8 +16,12 @@ def deck_path(rel: str) -> Path:
 
 
 def load(rel: str, fmt: str | None = None, **opts):
+    from lattix.errors import MissingDependencyError
     from lattix.formats import read
     from lattix.ir.walk import propagate
 
-    lat, rep = read(deck_path(rel), fmt, **opts)
+    try:
+        lat, rep = read(deck_path(rel), fmt, **opts)
+    except MissingDependencyError as exc:          # MAD-X decks need cpymad, which has no wheel everywhere
+        pytest.skip(str(exc))
     return lat, propagate(lat), rep

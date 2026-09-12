@@ -7,6 +7,8 @@ import { LatticeScene } from "./scene.js";
 import { CameraRig } from "./viewer/camera.js";
 import { Gizmo, Overlays } from "./viewer/overlays.js";
 import { Labels } from "./ui/labels.js";
+import { Measure } from "./tools/measure.js";
+import { MeasuresPanel } from "./ui/panel_measures.js";
 
 const $ = sel => document.querySelector(sel);
 
@@ -39,10 +41,25 @@ scene3.add(hemi, sun, fill);
 const overlays = new Overlays(scene3);
 const gizmo = new Gizmo(84);
 const labels = new Labels(view, scene3);
+const measure = new Measure(scene3, () => state.scene, camera, renderer.domElement, () => { panel.render(); toolButtons(); });
+const panel = new MeasuresPanel($("#measures"), measure, () => state.scene, id => {
+  const r = measure.records.find(x => x.id === id);
+  if (!r) return;
+  const p = r.rec.p || (r.rec.a ? r.rec.a.p : null) || (r.rec.i >= 0 ? state.scene.centreOf(r.rec.i).toArray() : null);
+  if (p) rig.frameElement(new THREE.Vector3(p[0], p[1], p[2]), 0.6);
+});
+const section = { on: false, axis: "s", offset: 0 };
 let frames = 0;
-window.lattix3d = { state, scene3, camera, rig, ready: false,
+window.lattix3d = { state, scene3, camera, rig, measure, ready: false,
   stats() { return { elements: state.scene ? state.scene.n : 0, frames, ...(state.scene ? state.scene.stats : {}) }; },
-  select(i) { select(i, true); }, view(name) { views(name); } };
+  select(i) { select(i, true); }, view(name) { views(name); },
+  /** Canvas pixel of a global point, or of element i's centre ("c"), entrance ("in") or exit ("out"). */
+  screenPosOf(i, at = "c") {
+    const el = state.scene.payload.el, arr = { c: el.pc, in: el.pin, out: el.pout }[at];
+    const v = new THREE.Vector3(arr[3 * i], arr[3 * i + 1], arr[3 * i + 2]).project(camera);
+    const r = renderer.domElement.getBoundingClientRect();
+    return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+  } };
 
 function applyTheme() {
   document.documentElement.setAttribute("data-theme", state.theme);
@@ -108,13 +125,18 @@ function views(name) {
 // -- picking ----------------------------------------------------------------------------------------
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
+let lastHit = null;                                  // {i, p} of the surface under the cursor
 function pick(ev) {
+  lastHit = null;
   if (!state.scene) return -1;
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(state.scene.pickables, false);
-  return hits.length ? state.scene.elementAt(hits[0]) : -1;
+  if (!hits.length) return -1;
+  const i = state.scene.elementAt(hits[0]);
+  lastHit = { i, p: hits[0].point.toArray() };
+  return i;
 }
 const tip = $("#tip");
 function fmtLen(v) { return Math.abs(v) < 1 && v !== 0 ? (v * 1e3).toPrecision(5) + " mm" : v.toPrecision(6) + " m"; }
@@ -143,8 +165,19 @@ renderer.domElement.addEventListener("pointermove", ev => {
     if (state.scene && state.selection == null) state.scene.highlight(i, state.palette, 0.45);
     if (state.bridge) state.bridge.hover(i >= 0 ? { side: "src", index: state.scene.payload.el.i[i] } : null);
   }
+  if (measure.tool) {
+    const sn = measure.hover([ev.clientX, ev.clientY], lastHit);
+    if (sn && sn.tier !== "surface") { tip.textContent = snapText(sn); tip.hidden = false; tip.style.left = (ev.clientX + 14) + "px"; tip.style.top = (ev.clientY + 14) + "px"; return; }
+  }
   showTip(i, ev);
 });
+function snapText(sn) {
+  const el = state.scene.payload.el;
+  const what = sn.tier === "frame" ? { in: "entrance", c: "centre", out: "exit", body: "body centre" }[sn.kind] + " of " + el.name[sn.i]
+             : sn.tier === "axis" ? "beam axis" + (sn.i >= 0 ? " in " + el.name[sn.i] : "") : sn.tier === "floor" ? "floor" : "free point";
+  const s = sn.s != null ? `  s = ${sn.s.toFixed(4)} m` : "";
+  return `${what}${s}\nX ${sn.p[0].toFixed(4)}  Y ${sn.p[1].toFixed(4)}  Z ${sn.p[2].toFixed(4)} m`;
+}
 renderer.domElement.addEventListener("pointerleave", () => { state.hover = -1; tip.hidden = true; });
 renderer.domElement.addEventListener("pointerup", ev => {
   const wasDown = down; down = null;
@@ -158,13 +191,33 @@ renderer.domElement.addEventListener("pointerup", ev => {
   }
   if (rig.mode === "fly") return;
   const i = pick(ev);
+  if (measure.click([ev.clientX, ev.clientY], lastHit)) return;
   select(i >= 0 ? i : null, true);
 });
+
+function toolButtons() {
+  for (const [name, id] of [["distance", "#btn-measure"], ["angle", "#btn-angle"], ["gap", "#btn-gap"], ["probe", "#btn-probe"]]) {
+    $(id).setAttribute("aria-pressed", String(measure.tool === name));
+  }
+  $("#btn-section").setAttribute("aria-pressed", String(section.on));
+  $("#section-ctl").hidden = !section.on;
+}
+function applySection() {
+  if (!section.on || state.selection == null) { measure.setSection(null, section.axis, 0, renderer); section.on = false; toolButtons(); return; }
+  const i = state.selection, el = state.scene.payload.el;
+  const half = section.axis === "s" ? el.size[3 * i + 2] : section.axis === "x" ? el.size[3 * i] : el.size[3 * i + 1];
+  const slider = $("#section-offset");
+  slider.min = -half; slider.max = half; slider.step = half / 50;
+  measure.setSection(i, section.axis, section.offset, renderer);
+  $("#section-axis").textContent = section.axis;
+  toolButtons();
+}
 
 function select(i, tell) {
   state.selection = i;
   if (state.scene) state.scene.highlight(i == null ? -1 : i, state.palette, 0.7);
   labels.setSelected(state.scene, i);
+  if (section.on) applySection();
   $("#status-text").textContent = i == null ? "" : `${state.scene.nameOf(i)}  ${state.scene.kindOf(i)}`;
   if (tell && state.bridge) state.bridge.select(i == null ? null : state.scene.payload.el.i[i]);
 }
@@ -222,7 +275,10 @@ async function load(sid) {
   }
   state.payload = payload;
   state.selection = null;
+  section.on = false;
   rebuild();
+  measure.setScene(payload);
+  toolButtons();
   const b = state.scene.bounds();
   overlays.build(b, payload.lattice.floor_y, payload.lattice.start);
   overlays.setGrid($("#btn-grid").getAttribute("aria-pressed") === "true");
@@ -287,6 +343,15 @@ $("#btn-grid").addEventListener("click", ev => {
   overlays.setGrid(on);
 });
 $("#btn-help").addEventListener("click", () => { $("#help").hidden = !$("#help").hidden; });
+$("#btn-measure").addEventListener("click", () => measure.setTool("distance"));
+$("#btn-angle").addEventListener("click", () => measure.setTool("angle"));
+$("#btn-gap").addEventListener("click", () => measure.setTool("gap"));
+$("#btn-probe").addEventListener("click", () => measure.setTool("probe"));
+$("#btn-heading").addEventListener("click", () => measure.addHeading(state.selection));
+$("#btn-section").addEventListener("click", () => { section.on = !section.on && state.selection != null; section.offset = 0; applySection(); });
+$("#btn-list").addEventListener("click", () => { $("#measures").hidden = !$("#measures").hidden; });
+$("#section-offset").addEventListener("input", ev => { section.offset = parseFloat(ev.target.value); applySection(); });
+$("#section-axis").addEventListener("click", () => { section.axis = { s: "x", x: "y", y: "s" }[section.axis]; section.offset = 0; $("#section-offset").value = 0; applySection(); });
 $("#search").addEventListener("keydown", ev => {
   if (ev.key === "Escape") { ev.target.blur(); return; }
   if (ev.key !== "Enter" || !state.scene) return;
@@ -322,20 +387,34 @@ document.addEventListener("keydown", ev => {
   if (k === "n") return views("front");
   if (k === "b") return views("beam");
   if (k === " ") { ev.preventDefault(); rig.toggleFly(); return; }
+  if (rig.mode === "fly") { if (k === "Escape") rig.setMode("orbit"); return; }     // the letters belong to flying now
   if (k === "r") return void rig.toggleFollow();
   if (k === "j") return rig.stepFollow(ev.shiftKey ? -5 : -0.25);
   if (k === "k") return rig.stepFollow(ev.shiftKey ? 5 : 0.25);
-  if (k === "p") { rig.follow.playing = !rig.follow.playing; return; }
+  if (k === "Enter" && rig.mode === "follow") { rig.follow.playing = !rig.follow.playing; return; }
   if (k === "[") { rig.follow.rate = Math.max(0.25, rig.follow.rate / 2); return; }
   if (k === "]") { rig.follow.rate = Math.min(64, rig.follow.rate * 2); return; }
-  if (k === "m") return $("#btn-style").click();
+  if (k === "m") return void measure.setTool("distance");
+  if (k === "a") return void measure.setTool("angle");
+  if (k === "y") return void measure.setTool("gap");
+  if (k === "p") return void measure.setTool("probe");
+  if (k === "h") return measure.addHeading(state.selection);
+  if (k === "c") return $("#btn-section").click();
+  if (k === "C") { if (section.on) $("#section-axis").click(); return; }
+  if (k === "Delete" || k === "Backspace") return measure.removeLast();
+  if (k === "L") return $("#btn-list").click();
+  if (k === "v") return $("#btn-style").click();
   if (k === "x") return $("#btn-xray").click();
   if (k === "l") return $("#btn-labels").click();
   if (k === "o") return $("#btn-orbit").click();
   if (k === "g") return $("#btn-grid").click();
   if (k === "ArrowRight") { ev.preventDefault(); return step(1, ev.shiftKey); }
   if (k === "ArrowLeft") { ev.preventDefault(); return step(-1, ev.shiftKey); }
-  if (k === "Escape") { if (rig.mode !== "orbit") { rig.setMode("orbit"); return; } $("#help").hidden = true; select(null, true); return; }
+  if (k === "Escape") {
+    if (rig.mode !== "orbit") { rig.setMode("orbit"); return; }
+    if (measure.tool) { measure.setTool(measure.tool); return; }
+    $("#help").hidden = true; select(null, true); return;
+  }
   if (state.bridge && state.bridge.embedded) state.bridge.key(ev);
 });
 document.addEventListener("keyup", ev => { rig.keys.delete(ev.key.length === 1 ? ev.key.toLowerCase() : ev.key); });
