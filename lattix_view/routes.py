@@ -67,8 +67,21 @@ def _flag(query: dict, name: str, default: str = "1") -> bool:
     return (query.get(name) or [default])[0].lower() not in ("0", "false", "no")
 
 
+SITE_KEYS = ("x0", "y0", "z0", "theta0", "phi0", "psi0")
+
+
+def _site(query: dict) -> tuple[float, ...]:
+    try:
+        return tuple(float((query.get(k) or ["0"])[0]) for k in SITE_KEYS)
+    except ValueError as exc:
+        raise ApiError(400, "bad_request", f"site pose must be numbers: {exc}") from None
+
+
 def r_scene(handler, query) -> None:
-    """``?session=&side=src|dst&translation=&shift=1&children=1`` -> the scene payload, gzip when accepted."""
+    """``?session=&side=src|dst&translation=&shift=1&children=1&x0=…&psi0=…`` -> the scene payload, in the
+    site frame given by the start pose (metres, radians, as MAD-X SURVEY), gzip when accepted."""
+    from lattix.ir.frames import site_frame
+
     sid = (query.get("session") or [""])[0]
     if not sid:
         raise ApiError(400, "bad_request", "session is required")
@@ -87,13 +100,15 @@ def r_scene(handler, query) -> None:
         if loaded is None:
             raise ApiError(409, "conflict", "no source deck in this session")
     shift, children = _flag(query, "shift"), _flag(query, "children")
-    key = (id(loaded), shift, children)
+    pose = _site(query)
+    key = (id(loaded), shift, children, pose)
     state = s.plugin_state.setdefault("lattix_view", {})
     with s.lock:
         cached = state.get("scene")
         if cached is None or cached[0] != key:
             payload = scene_view(loaded.lattice, loaded.placed, fmt=loaded.fmt, path=loaded.path, side=side,
-                                 shift=shift, children=children)
+                                 shift=shift, children=children, start=site_frame(*pose))
+            payload["lattice"]["site"] = dict(zip(SITE_KEYS, pose, strict=True))
             body = json.dumps(jsonable(payload), allow_nan=False, separators=(",", ":")).encode("utf-8")
             state["scene"] = (key, body, gzip.compress(body, 6))
         _, body, packed = state["scene"]

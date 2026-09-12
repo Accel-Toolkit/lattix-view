@@ -9,6 +9,7 @@ import { Gizmo, Overlays } from "./viewer/overlays.js";
 import { Labels } from "./ui/labels.js";
 import { Measure } from "./tools/measure.js";
 import { MeasuresPanel } from "./ui/panel_measures.js";
+import { ExportPanel } from "./ui/panel_export.js";
 
 const $ = sel => document.querySelector(sel);
 
@@ -49,6 +50,11 @@ const panel = new MeasuresPanel($("#measures"), measure, () => state.scene, id =
   if (p) rig.frameElement(new THREE.Vector3(p[0], p[1], p[2]), 0.6);
 });
 const section = { on: false, axis: "s", offset: 0 };
+const exportPanel = new ExportPanel($("#exports"), {
+  getScene: () => state.scene, getState: () => state, renderer, scene3, camera, rig, session: () => state.session,
+  onSite: site => { state.site = site; load(state.session); },
+});
+state.site = null;
 let frames = 0;
 window.lattix3d = { state, scene3, camera, rig, measure, ready: false,
   stats() { return { elements: state.scene ? state.scene.n : 0, frames, ...(state.scene ? state.scene.stats : {}) }; },
@@ -268,17 +274,20 @@ async function load(sid) {
   showMessage("loading the scene…");
   let payload;
   try {
-    payload = await getJSON(`${PREFIX}/api/scene?session=${encodeURIComponent(sid)}`);
+    const site = state.site ? "&" + exportPanel.siteQuery() : "";
+    payload = await getJSON(`${PREFIX}/api/scene?session=${encodeURIComponent(sid)}${site}`);
   } catch (e) {
     showMessage(`<p class="err">${e.message}</p><p class="muted">${e.status === 409 ? "read a deck first" : "open this page through the link the workbench printed"}</p>`);
     return;
   }
+  const keepView = !!state.payload && state.payload.lattice.file === payload.lattice.file;
   state.payload = payload;
   state.selection = null;
   section.on = false;
   rebuild();
   measure.setScene(payload);
   toolButtons();
+  window.lattix3d.exportPanel = exportPanel;
   const b = state.scene.bounds();
   overlays.build(b, payload.lattice.floor_y, payload.lattice.start);
   overlays.setGrid($("#btn-grid").getAttribute("aria-pressed") === "true");
@@ -287,8 +296,10 @@ async function load(sid) {
   $("#deck-name").textContent = L.file ? L.file.split("/").pop() : L.name;
   $("#deck-info").textContent = `${L.format}  ·  ${L.n} elements  ·  ${L.total_length.toPrecision(6)} m`;
   hideMessage();
-  rig.view("iso", b.sphere);
-  rig.flyTo({ position: camera.position.clone(), target: rig.controls.target.clone(), up: camera.up.clone() }, false);
+  if (!keepView) {
+    rig.view("iso", b.sphere);
+    rig.flyTo({ position: camera.position.clone(), target: rig.controls.target.clone(), up: camera.up.clone() }, false);
+  }
   window.lattix3d.ready = true;
 }
 
@@ -350,6 +361,7 @@ $("#btn-probe").addEventListener("click", () => measure.setTool("probe"));
 $("#btn-heading").addEventListener("click", () => measure.addHeading(state.selection));
 $("#btn-section").addEventListener("click", () => { section.on = !section.on && state.selection != null; section.offset = 0; applySection(); });
 $("#btn-list").addEventListener("click", () => { $("#measures").hidden = !$("#measures").hidden; });
+$("#btn-export").addEventListener("click", () => { $("#exports").hidden = !$("#exports").hidden; $("#measures").hidden = true; });
 $("#section-offset").addEventListener("input", ev => { section.offset = parseFloat(ev.target.value); applySection(); });
 $("#section-axis").addEventListener("click", () => { section.axis = { s: "x", x: "y", y: "s" }[section.axis]; section.offset = 0; $("#section-offset").value = 0; applySection(); });
 $("#search").addEventListener("keydown", ev => {

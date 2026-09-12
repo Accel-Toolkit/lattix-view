@@ -75,6 +75,10 @@ input[type=text] { font: inherit; color: var(--text-0); background: var(--bg-2);
 .panel table.list td.num { color: var(--text-2); font-family: var(--font-mono); }
 .panel table.list td.text { font-family: var(--font-mono); white-space: pre-wrap; }
 .panel table.list button { padding: 1px 6px; margin-left: 2px; }
+.panel .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.panel .row .lbl { width: 84px; color: var(--text-2); }
+.panel .row.site label { display: inline-flex; flex-direction: column; font-size: 11px; color: var(--text-2); }
+.panel .row.site input { width: 64px; font: inherit; color: var(--text-0); background: var(--bg-1); border: 1px solid var(--line); border-radius: 3px; padding: 2px 4px; }
 a { color: var(--accent); }
 </style>
 </head>
@@ -102,6 +106,8 @@ a { color: var(--accent); }
     <button id="btn-section" title="section plane through the selection (c; Shift+C cycles its axis)">section</button>
     <span id="section-ctl" hidden><button id="section-axis" title="the plane's normal: s, x or y">s</button><input type="range" id="section-offset" min="-1" max="1" step="0.01" value="0" style="width: 90px"></span>
     <button id="btn-list" title="the measurements list (Shift+L)">list</button>
+    <span class="sep"></span>
+    <button id="btn-export" title="survey table, glTF, OBJ, screenshot, video, site pose">export</button>
     <span class="sep"></span>
     <button id="btn-style" title="schematic or realistic models (v)">schematic</button>
     <button id="btn-xray" title="see through yokes and cavities (x)">x-ray</button>
@@ -132,6 +138,7 @@ a { color: var(--accent); }
     <div class="muted">Axes: +Z downstream at the start, +Y up, +X to the left looking downstream (MAD-X survey).</div>
   </div>
   <div id="measures" class="panel" hidden></div>
+  <div id="exports" class="panel" hidden></div>
   <div id="msg"><div>loading…</div></div>
   <div id="tip" hidden></div>
 </div>
