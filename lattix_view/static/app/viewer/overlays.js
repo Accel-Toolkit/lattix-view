@@ -30,8 +30,9 @@ export class Overlays {
     this.grid.material.transparent = true;
     this.grid.material.opacity = 0.55;
     this.group.add(this.grid);
-    // survey axes at the start of the line, sized to the scene
-    const L = Math.max(0.5, niceStep(r * 0.15));
+    // survey axes at the start of the line, sized to the scene but never longer than a couple of metres
+    // (a 300 m line would otherwise put a 20 m arrow across every close-up near its start)
+    const L = Math.min(2, Math.max(0.5, niceStep(r * 0.15)));
     const origin = new THREE.Vector3(start.V[0], start.V[1], start.V[2]);
     this.axes = new THREE.Group();
     const axis = (dir, colour, text) => {
