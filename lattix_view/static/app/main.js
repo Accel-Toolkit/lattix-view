@@ -113,6 +113,12 @@ function showTip(i, ev) {
   tip.style.top = Math.min(ev.clientY + 14, window.innerHeight - 120) + "px";
 }
 function fmtLen(v) { return Math.abs(v) < 1 && v !== 0 ? (v * 1e3).toPrecision(5) + " mm" : v.toPrecision(6) + " m"; }
+/** The 1-2-5 step at or above a raw step. */
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-6))));
+  const m = raw / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
 
 let down = null;
 renderer.domElement.addEventListener("pointerdown", ev => { down = { x: ev.clientX, y: ev.clientY }; });
@@ -163,8 +169,9 @@ async function load(sid) {
   scene3.add(state.scene.group);
   if (grid) scene3.remove(grid);
   const b = state.scene.bounds();
-  const span = Math.max(10, Math.ceil(b.sphere.radius * 2.5 / 10) * 10);
-  grid = new THREE.GridHelper(span, span, 0x3b4a5e, 0x263241);
+  const step = niceStep(b.sphere.radius * 2.5 / 25);          // about 25 cells across, on a 1-2-5 step
+  const span = Math.max(10, Math.ceil(b.sphere.radius * 2.5 / step) * step);
+  grid = new THREE.GridHelper(span, Math.round(span / step), 0x3b4a5e, 0x263241);
   grid.position.set(b.sphere.center.x, payload.lattice.floor_y, b.sphere.center.z);
   grid.visible = $("#btn-grid").getAttribute("aria-pressed") === "true";
   scene3.add(grid);
