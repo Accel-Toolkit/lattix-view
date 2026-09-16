@@ -6,6 +6,8 @@ All notable changes to lattix-view are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-15
+
 ### Added
 - The scene payload (`lattix-view.scene/1`): every element's entrance, centre, exit and body
   frames from lattix's floor frames, a bore for every element (its own aperture, a neighbour's,

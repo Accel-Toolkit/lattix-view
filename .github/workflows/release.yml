@@ -102,11 +102,10 @@ jobs:
         with: { node-version: "22" }
       - uses: actions/download-artifact@v4
         with: { name: dist, path: dist }
-      - name: install the wheel, never the checkout
+      - name: install the wheel, never the checkout (lattix comes from PyPI; the checkout only lends its public decks)
         run: |
           python -m pip install -U pip
-          python -m pip install -e "./lattix-src" "pals-schema>=0.3.0"
-          python -m pip install dist/*.whl
+          python -m pip install dist/*.whl "pals-schema>=0.3.0"
           python -m pip install pytest packaging
       - name: the installed package is the tagged version and the hook works from both sides
         env: { V: "${{ needs.build.outputs.version }}" }

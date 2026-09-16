@@ -5,10 +5,10 @@ reads, twenty-eight formats, is drawn element by element on its survey coordinat
 per element, a hover label, measurement tools and exports. It runs in the browser as a tab of the
 lattix workbench (`lattix ui`) or on its own, and loads nothing from the network.
 
-![the CSR chicane: dipoles, quadrupoles and the beam pipe on the survey, with labels](https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/main/docs/img/chicane.png)
+![the CSR chicane: dipoles, quadrupoles and the beam pipe on the survey, with labels](https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/v0.1.0/docs/img/chicane.png)
 
 ```bash
-pip install lattix-view                # brings lattix with it
+pip install lattix-view                # brings lattix 0.2.0 or later with it
 lattix ui --root decks/                # the workbench, now with a 3D tab
 lattix-view view linac.dat             # the 3D page for one deck
 lattix-view scene linac.dat -o scene.json                    # the scene as JSON, no server
@@ -41,11 +41,11 @@ lattix-view overrides linac.dat --overrides site.yaml        # which of a site's
   afar and full detail up close; picking walks only what is on screen.
 
 <p>
-<img alt="the measurement tools on the chicane: a distance, an angle and a heading" src="https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/main/docs/img/measure.png" width="49%">
-<img alt="a DTL section: tanks with drift tubes, quadrupoles and solenoids" src="https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/main/docs/img/dtl.png" width="49%">
+<img alt="the measurement tools on the chicane: a distance, an angle and a heading" src="https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/v0.1.0/docs/img/measure.png" width="49%">
+<img alt="a DTL section: tanks with drift tubes, quadrupoles and solenoids" src="https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/v0.1.0/docs/img/dtl.png" width="49%">
 </p>
 
-![the FRIB linac from above: three segments and two folding sections, 2549 elements](https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/main/docs/img/frib_top.png)
+![the FRIB linac from above: three segments and two folding sections, 2549 elements](https://raw.githubusercontent.com/Accel-Toolkit/lattix-view/v0.1.0/docs/img/frib_top.png)
 
 ## Documentation
 

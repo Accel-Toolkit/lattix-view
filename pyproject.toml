@@ -28,7 +28,7 @@ classifiers = [
   "Environment :: Web Environment",
 ]
 dependencies = [
-  "lattix>=0.1.0",
+  "lattix>=0.2.0",
 ]
 
 [project.urls]

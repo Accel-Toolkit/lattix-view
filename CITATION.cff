@@ -3,7 +3,7 @@ message: "If you use lattix-view, please cite it as below."
 type: software
 title: "lattix-view: a 3D viewer for accelerator lattices"
 version: 0.1.0
-date-released: 2026-09-11
+date-released: 2026-09-15
 license: BSD-3-Clause
 repository-code: "https://github.com/Accel-Toolkit/lattix-view"
 authors:

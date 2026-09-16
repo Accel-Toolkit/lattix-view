@@ -6,7 +6,7 @@
 git clone https://github.com/Accel-Toolkit/lattix.git      # the public sample decks live there
 git clone https://github.com/Accel-Toolkit/lattix-view.git
 cd lattix-view
-pip install -e ../lattix -e ".[dev]"
+pip install -e ../lattix -e ".[dev]"          # or plain pip install lattix, 0.2.0 or later
 export LATTIX_PUBLIC_DECKS=../lattix/tests/data/public       # only when lattix is installed from a wheel
 pytest                        # the Python suite (node runs the JavaScript tests when installed)
 node --test tests/js
