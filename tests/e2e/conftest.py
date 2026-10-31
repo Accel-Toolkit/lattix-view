@@ -4,6 +4,7 @@ extra (`pip install -e ".[browser]" && playwright install chromium`) and the lat
 without either they skip.  Screenshots and downloads land in `tests/e2e/.artifacts/`."""
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
@@ -151,6 +152,18 @@ def open_view(chromium, workbench):
     yield _open
     for o in opened:
         o.context.close()
+
+
+def hover_point(o, i: int) -> list[float]:
+    """The pixel to hover element i at: halfway from its centre to the end further from the camera.
+    At the centre itself the pipe on the near side can hide a short element, and the tooltip then
+    rightly names the pipe."""
+    el = o.payload()["el"]
+    camera = o.evaluate("window.lattix3d.camera.position.toArray()")
+    far = max(("in", "out"), key=lambda end: math.dist(camera, el[f"p{end}"][3 * i:3 * i + 3]))
+    cx, cy = o.evaluate(f"window.lattix3d.screenPosOf({i}, 'c')")
+    ex, ey = o.evaluate(f"window.lattix3d.screenPosOf({i}, '{far}')")
+    return [(cx + ex) / 2, (cy + ey) / 2]
 
 
 def thick_element(payload: dict, kinds=("Quadrupole", "Bend", "Solenoid", "RFCavity")) -> int:

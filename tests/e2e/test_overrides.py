@@ -8,7 +8,7 @@ from tests.test_overrides import cube_glb
 
 
 @pytest.fixture
-def rules(tmp_path, monkeypatch):
+def rules(tmp_path, monkeypatch, workbench):
     (tmp_path / "models").mkdir()
     cube_glb(tmp_path / "models" / "cube.glb")
     (tmp_path / "rules.yaml").write_text(
@@ -17,7 +17,8 @@ def rules(tmp_path, monkeypatch):
         "  - match: {kind: Bend}\n    hide: true\n"
         "  - match: {kind: Drift}\n    model: absent.glb\n", encoding="utf-8")
     monkeypatch.setenv("LATTIX_VIEW_OVERRIDES", str(tmp_path / "rules.yaml"))
-    return tmp_path
+    yield tmp_path
+    workbench.sessions.pop("helix/bend_line.dat", None)                 # the next test must not inherit the rules
 
 
 def test_cube_replaces_quadrupoles_fitted_to_their_length(open_view, rules, workbench):

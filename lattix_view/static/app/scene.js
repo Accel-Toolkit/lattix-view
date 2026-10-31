@@ -206,6 +206,16 @@ export class LatticeScene {
     return out.concat(this.overrides.meshes);
   }
 
+  /** The glass of the visible levels: a ray asks it only when nothing solid is there, for the elements that are only glass. */
+  get glassPickables() {
+    const out = [];
+    for (const c of this.chunks) {
+      const lv = c.level >= 0 ? c.levels[c.level] : null;
+      if (lv) for (const m of lv.meshes) if (m.name === "glass") out.push(m);
+    }
+    return out;
+  }
+
   /** Load the glTF overrides (asynchronous; the procedural scene is already on screen). */
   async loadOverrides() {
     await this.overrides.load();

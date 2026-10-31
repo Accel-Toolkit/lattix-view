@@ -6,6 +6,11 @@ All notable changes to lattix-view are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- An element drawn only as glass (a cavity with no frequency, an abstract box, a field-map extent,
+  an unknown collimator) can be hovered and selected. Solid hardware still wins over glass in front
+  of it.
+
 ## [0.1.0] - 2026-09-15
 
 ### Added

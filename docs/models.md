@@ -123,4 +123,6 @@ of the 2D pages carries over:
 | kind | flat | 100 % | markers, triads, flags, schematic and box levels |
 
 Hovering lightens the element's vertices; selection lightens them more and pins its label; the
-`x-ray` button makes yokes, cavities, coils and ceramics translucent.
+`x-ray` button makes yokes, cavities, coils and ceramics translucent. The pointer reads the first
+solid part under it, and glass only where nothing solid is there, so glass never hides the hardware
+behind it and an element that is only glass can still be hovered and selected.

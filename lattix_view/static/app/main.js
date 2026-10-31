@@ -179,10 +179,10 @@ function pick(ev) {
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hits = ray.intersectObjects(state.scene.pickables, false);
-  if (!hits.length) return -1;
-  const i = state.scene.elementAt(hits[0]);
-  lastHit = { i, p: hits[0].point.toArray() };
+  const hit = ray.intersectObjects(state.scene.pickables, false)[0] || ray.intersectObjects(state.scene.glassPickables, false)[0];
+  if (!hit) return -1;
+  const i = state.scene.elementAt(hit);
+  lastHit = { i, p: hit.point.toArray() };
   return i;
 }
 const tip = $("#tip");
